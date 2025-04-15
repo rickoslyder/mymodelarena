@@ -1,0 +1,77 @@
+.container {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-background);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+
+.questionBlock {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.questionBlock:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.questionText {
+  font-weight: 500;
+  margin-bottom: var(--space-3);
+  color: var(--color-text-primary);
+}
+
+.judgmentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-4);
+}
+
+.judgmentCard {
+  background-color: var(--color-background-alt);
+  padding: var(--space-3);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.judgeInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.judgeName {
+  font-weight: 600;
+}
+
+.judgeScore {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--color-primary);
+}
+
+.judgeJustification {
+  font-style: italic;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: var(--space-2);
+}
+
+.noJudgments {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

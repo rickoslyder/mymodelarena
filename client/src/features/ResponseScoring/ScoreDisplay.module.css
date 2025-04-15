@@ -1,0 +1,24 @@
+.container {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-2);
+}
+
+.scoreValue {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-right: var(--space-2);
+}
+
+.scorerInfo {
+  font-style: italic;
+  margin-left: var(--space-1);
+}
+
+.justification {
+  margin-top: var(--space-1);
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-border);
+  font-style: italic;
+  white-space: pre-wrap; /* Preserve formatting */
+}

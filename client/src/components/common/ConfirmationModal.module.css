@@ -1,0 +1,11 @@
+.modalContent p {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}

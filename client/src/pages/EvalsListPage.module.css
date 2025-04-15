@@ -1,0 +1,32 @@
+.container {
+  /* Add padding if needed, PageWrapper likely handles it */
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  /* Adjust alignment as needed */
+}
+
+.searchControl {
+  flex-grow: 1; /* Allow search to take more space */
+  max-width: 400px;
+}
+
+.emptyState {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-background);
+  margin-top: var(--space-6);
+}

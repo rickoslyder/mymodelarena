@@ -1,0 +1,18 @@
+/* Reusing Input.module.css styles where applicable */
+@import "./Input.module.css";
+
+.select {
+  /* Inherit base input styles */
+  composes: input from "./Input.module.css";
+  /* Select specific styles */
+  appearance: none; /* Remove default browser appearance */
+  background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%2364748b"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>'); /* Basic dropdown arrow */
+  background-repeat: no-repeat;
+  background-position: right var(--space-2) center;
+  background-size: 1.25em 1.25em;
+  padding-right: var(--space-10); /* Add padding for arrow */
+}
+
+.select:disabled {
+  background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%2394a3b8"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>'); /* Disabled arrow color */
+}

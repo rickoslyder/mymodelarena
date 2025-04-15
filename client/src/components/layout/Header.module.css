@@ -1,0 +1,14 @@
+.header {
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--color-background-alt);
+  border-bottom: var(--border-width) solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}

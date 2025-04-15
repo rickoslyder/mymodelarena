@@ -1,0 +1,15 @@
+/* Reusing Input.module.css styles where applicable */
+@import "./Input.module.css";
+
+.textarea {
+  /* Inherit base input styles */
+  composes: input from "./Input.module.css";
+  /* Textarea specific styles */
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--font-family-sans); /* Ensure consistent font */
+  line-height: 1.5;
+}
+
+/* Error state composition (if not already handled by Input's error class) */
+/* .textarea.error { composes: error from "./Input.module.css"; } */

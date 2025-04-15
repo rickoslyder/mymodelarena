@@ -1,0 +1,19 @@
+.listContainer {
+  /* Use a grid layout for models */
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(300px, 1fr)
+  ); /* Responsive grid */
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.emptyState {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-background);
+}

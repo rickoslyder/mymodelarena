@@ -1,0 +1,28 @@
+/* Reusing Input.module.css styles for layout/label */
+@import "./Input.module.css";
+
+.checkboxWrapper {
+  /* Inherit formGroup styles for spacing */
+  composes: formGroup from "./Input.module.css";
+}
+
+.checkboxLabel {
+  display: inline-flex; /* Align checkbox and text */
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  /* Inherit base label styles */
+  composes: label from "./Input.module.css";
+  /* Override label block display and margin */
+  display: inline-flex;
+  margin-bottom: 0;
+}
+
+.checkboxInput {
+  cursor: pointer;
+  width: 1em;
+  height: 1em;
+  /* Add custom styling later if desired */
+}
+
+/* Error message styling is inherited from Input.module.css */

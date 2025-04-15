@@ -1,0 +1,16 @@
+/* Basic styles for PageWrapper */
+.pageWrapper {
+  flex-grow: 1; /* Take remaining space */
+  padding: 1.5rem 2rem; /* Keep padding for content spacing */
+  /* Remove max-width and centering margins */
+  /* max-width: 1200px; */
+  /* margin-left: auto; */
+  /* margin-right: auto; */
+  width: 100%;
+  background-color: #ffffff; /* White background for content area */
+  display: flex; /* Add flex display */
+  flex-direction: column; /* Ensure children stack vertically */
+  overflow: auto; /* Handle internal scrolling */
+}
+
+/* Add other styles as needed */

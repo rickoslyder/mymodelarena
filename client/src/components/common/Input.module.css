@@ -1,0 +1,38 @@
+.formGroup {
+  margin-bottom: var(--space-4);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-background-alt);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); /* Focus ring */
+}
+
+.input.error {
+  border-color: var(--color-danger);
+}
+
+.errorMessage {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+}

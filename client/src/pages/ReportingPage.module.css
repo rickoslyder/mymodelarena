@@ -1,0 +1,7 @@
+.container {
+  /* Add padding if needed, PageWrapper likely handles it */
+}
+
+.section {
+  margin-bottom: var(--space-8);
+}

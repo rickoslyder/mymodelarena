@@ -1,0 +1,58 @@
+.tableContainer {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-background-alt);
+  margin-bottom: var(--space-6); /* Add margin below table */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle; /* Align vertically */
+}
+
+.table th {
+  background-color: var(--color-background);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:nth-child(odd) {
+  background-color: var(
+    --color-background
+  ); /* Lighter background for odd rows */
+}
+
+.table tbody tr:hover {
+  background-color: #e2e8f0; /* Slightly darker hover */
+}
+
+.table th.sortableHeader {
+  cursor: pointer;
+}
+
+.table th.sortableHeader:hover {
+  background-color: #e2e8f0; /* Slightly darker background on hover */
+}
+
+.sortIndicator {
+  margin-left: var(--space-1);
+  font-size: 0.7em; /* Make indicator smaller */
+  vertical-align: middle;
+  display: inline-block;
+  opacity: 0.7;
+}

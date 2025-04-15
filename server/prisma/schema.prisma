@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL") // Make sure this matches your .env file
+}
+
+model Model {
+  id              String   @id @default(cuid())
+  name            String   @unique // User-defined display name
+  baseUrl         String   // Base URL (especially for custom, or standard URL for known providers)
+  apiKeyEnvVar    String   // Name of the env var holding the key
+  
+  provider        String?  // e.g., 'openai', 'anthropic', 'google', 'mistral', 'openrouter', 'custom'
+  modelIdentifier String?  // Actual model ID from the provider (e.g., 'gpt-4o')
+  
+  inputTokenCost  Float    
+  outputTokenCost Float    
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  generatedEvals Eval[]      @relation("GeneratedBy")
+  evalResponses  Response[]
+  scoresGiven    Score[]     @relation("ScoredByLlm") // Scores given BY this model when acting as scorer
+  judgmentsGiven Judgment[]  @relation("JudgedBy") // Judgments given BY this model when acting as judge
+}
+
+model Eval {
+  id               String    @id @default(cuid())
+  name             String?
+  description      String?
+  generationPrompt String?   // The prompt used to generate this eval
+  difficulty       String?   // e.g., "easy", "medium", "hard"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  generatorModelId String?   // Which model generated this (if any)
+  generatorModel   Model?    @relation("GeneratedBy", fields: [generatorModelId], references: [id], onDelete: SetNull) // Keep Eval if model is deleted
+
+  questions Question[]
+  tags      EvalTag[]
+  evalRuns  EvalRun[]
+
+  @@index([generatorModelId])
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  evalId      String
+  text        String
+  version     Int      @default(1) // Simple version counter
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  eval       Eval        @relation(fields: [evalId], references: [id], onDelete: Cascade) // If Eval deleted, delete Questions
+  responses  Response[]
+  judgments  Judgment[]
+
+  @@index([evalId])
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  evals EvalTag[]
+}
+
+// Explicit many-to-many join table for Evals and Tags
+model EvalTag {
+  evalId String
+  tagId  String
+  eval   Eval   @relation(fields: [evalId], references: [id], onDelete: Cascade) // If Eval deleted, remove tag associations
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade) // If Tag deleted, remove tag associations
+
+  @@id([evalId, tagId])
+  @@index([tagId])
+}
+
+model EvalRun {
+  id        String   @id @default(cuid())
+  evalId    String
+  status    String   // e.g., PENDING, RUNNING, COMPLETED, FAILED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eval      Eval       @relation(fields: [evalId], references: [id], onDelete: Cascade) // If Eval deleted, delete Runs
+  responses Response[]
+
+  @@index([evalId])
+  @@index([status])
+}
+
+model Response {
+  id              String    @id @default(cuid())
+  evalRunId       String
+  questionId      String
+  modelId         String    // The model that generated this response
+  responseText    String?
+  error           String?   // Store error message if call failed
+  inputTokens     Int?
+  outputTokens    Int?
+  cost            Float?
+  executionTimeMs Int?
+  createdAt       DateTime  @default(now())
+
+  evalRun    EvalRun  @relation(fields: [evalRunId], references: [id], onDelete: Cascade) // If Run deleted, delete Responses
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // If Question deleted, delete Responses
+  model      Model    @relation(fields: [modelId], references: [id], onDelete: Restrict) // Prevent model deletion if responses exist
+  scores     Score[]
+
+  @@index([evalRunId])
+  @@index([questionId])
+  @@index([modelId])
+}
+
+model Score {
+  id            String   @id @default(cuid())
+  responseId    String   @unique // Each response gets max one score record
+  scoreValue    Float?   // Could be rating (1-5) or binary (0/1) etc.
+  justification String?  // Primarily for LLM scoring
+  scorerType    String   // 'manual' or 'llm'
+  scorerLlmId   String?  // Which model did the scoring (if scorerType='llm')
+  createdAt     DateTime @default(now())
+
+  response  Response @relation(fields: [responseId], references: [id], onDelete: Cascade) // If Response deleted, delete Score
+  scorerLlm Model?   @relation("ScoredByLlm", fields: [scorerLlmId], references: [id], onDelete: SetNull) // If scorer model deleted, keep score but nullify link
+
+  @@index([scorerLlmId])
+}
+
+model Judgment {
+  id               String   @id @default(cuid())
+  questionId       String
+  judgeModelId     String   // Which model gave this judgment
+  overallScore     Float?   // e.g., 1-10
+  // Optional: Store scores per predefined criteria if used
+  clarityScore     Float?
+  difficultyScore  Float?
+  relevanceScore   Float?
+  originalityScore Float?
+  justification    String?
+  createdAt        DateTime @default(now())
+
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // If Question deleted, delete Judgment
+  judgeModel Model    @relation("JudgedBy", fields: [judgeModelId], references: [id], onDelete: Restrict) // Prevent judge model deletion if judgments exist
+
+  @@index([questionId])
+  @@index([judgeModelId])
+}

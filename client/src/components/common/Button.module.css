@@ -1,0 +1,74 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--border-radius-md);
+  border: var(--border-width) solid transparent;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  white-space: nowrap;
+}
+
+.button:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-background-disabled);
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
+}
+
+/* Primary Variant */
+.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+}
+.primary:not(:disabled):hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Secondary Variant */
+.secondary {
+  background-color: var(--color-background-alt);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.secondary:not(:disabled):hover {
+  background-color: var(--color-background-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* Danger Variant */
+.danger {
+  background-color: var(--color-danger);
+  color: var(--color-text-on-primary);
+}
+.danger:not(:disabled):hover {
+  background-color: var(--color-danger-hover);
+}
+
+/* Add other variants/sizes as needed */
+
+/* Sizes */
+.sm {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.md {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-base);
+}
