@@ -5,6 +5,14 @@ import config from "./config";
 import mainRouter from "./routes/index"; // Corrected import path
 import requestLogger from "./middleware/requestLogger";
 import errorHandler from "./middleware/errorHandler";
+import modelRoutes from "./routes/models.routes"; // Assuming you have this
+import evalRoutes from "./routes/evals.routes"; // Assuming you have this
+import evalRunRoutes from "./routes/evalRuns.routes"; // Assuming you have this
+import scoreRoutes from "./routes/scores.routes"; // Assuming you have this
+import judgmentRoutes from "./routes/judgments.routes"; // Assuming you have this
+import pricingRoutes from "./routes/pricing.routes"; // Import the new pricing routes
+import reportRoutes from "./routes/reports.routes"; // Assuming you have this
+import tagRoutes from "./routes/tags.routes"; // Assuming you have this
 
 const app = express();
 
@@ -31,6 +39,14 @@ app.get("/api/health", (req: Request, res: Response) => {
 
 // API Routes
 app.use("/api", mainRouter);
+app.use("/api/models", modelRoutes);
+app.use("/api/evals", evalRoutes);
+app.use("/api/eval-runs", evalRunRoutes);
+app.use("/api/scores", scoreRoutes);
+app.use("/api/judgments", judgmentRoutes);
+app.use("/api/pricing", pricingRoutes); // Use the pricing routes
+app.use("/api/reports", reportRoutes);
+app.use("/api/tags", tagRoutes);
 
 // Basic Not Found Handler (for API routes)
 app.use("/api/*", (req: Request, res: Response) => {

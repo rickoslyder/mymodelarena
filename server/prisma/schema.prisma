@@ -45,11 +45,20 @@ model Eval {
   generatorModelId String?   // Which model generated this (if any)
   generatorModel   Model?    @relation("GeneratedBy", fields: [generatorModelId], references: [id], onDelete: SetNull) // Keep Eval if model is deleted
 
+  // Template relation
+  templateId       String?   // Which template was used to generate this eval
+  templateUsed     EvalTemplate? @relation("GeneratedFromTemplate", fields: [templateId], references: [id], onDelete: SetNull)
+
+  // Generation options used
+  questionTypes    String?   // JSON string of question types used
+  generationFormat String?   // Format used during generation
+
   questions Question[]
   tags      EvalTag[]
   evalRuns  EvalRun[]
 
   @@index([generatorModelId])
+  @@index([templateId])
 }
 
 model Question {
@@ -154,4 +163,117 @@ model Judgment {
 
   @@index([questionId])
   @@index([judgeModelId])
+}
+
+model ModelPrice {
+  id              String   @id @default(cuid())
+  Provider        String
+  ModelID         String   // Alias or snapshot ID
+  CanonicalID     String   // The corresponding snapshot ID
+  ContextWindow   Int
+  InputUSDPer1M   Float
+  OutputUSDPer1M  Float
+  Notes           String?
+  Date            DateTime // Capture date of the price record
+
+  // Ensure we don't store the exact same price record twice for the same model on the same day
+  @@unique([ModelID, Date])
+  // Indexing for common lookups
+  @@index([ModelID])
+  @@index([CanonicalID])
+  @@index([Date])
+}
+
+// Template system for eval generation
+model EvalTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String
+  category         String
+  icon             String?
+  prompt           String   // The generation prompt for this template
+  isPublic         Boolean  @default(false) // Public templates visible to all users
+  isBuiltIn        Boolean  @default(false) // Built-in system templates
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Default generation options
+  defaultQuestionTypes String   @default("[]") // JSON string of question types
+  defaultDifficulty    String   @default("medium") // easy, medium, hard, expert
+  defaultFormat        String   @default("open-ended") // open-ended, multiple-choice, etc.
+  defaultCount         Int      @default(10)
+  
+  // Metadata
+  tags             String   @default("[]") // JSON string of tags
+  examples         String   @default("[]") // JSON string of example questions
+  
+  // Optional: User ownership (for user-created templates)
+  createdByUserId  String?
+  
+  // Template usage tracking
+  usageCount       Int      @default(0)
+  
+  // Relations
+  templateTags     TemplateTag[]
+  generatedEvals   Eval[]    @relation("GeneratedFromTemplate")
+  
+  @@index([category])
+  @@index([isPublic])
+  @@index([isBuiltIn])
+  @@index([createdByUserId])
+}
+
+// Tag system for templates
+model TemplateTagDefinition {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?
+  color       String?       // Hex color for UI display
+  createdAt   DateTime      @default(now())
+  
+  templateTags TemplateTag[]
+}
+
+// Many-to-many relationship between templates and tags
+model TemplateTag {
+  templateId String
+  tagId      String
+  
+  template   EvalTemplate         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tag        TemplateTagDefinition @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([templateId, tagId])
+  @@index([tagId])
+}
+
+// Template collections for organizing templates
+model TemplateCollection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // User ownership
+  createdByUserId String?
+  
+  items       TemplateCollectionItem[]
+  
+  @@index([createdByUserId])
+  @@index([isPublic])
+}
+
+// Items within template collections
+model TemplateCollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  templateId   String
+  order        Int      @default(0)
+  addedAt      DateTime @default(now())
+  
+  collection   TemplateCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  
+  @@unique([collectionId, templateId])
+  @@index([templateId])
 }

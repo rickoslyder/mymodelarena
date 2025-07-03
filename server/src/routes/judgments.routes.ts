@@ -1,12 +1,18 @@
-import { Router } from "express";
-import * as judgmentController from "../controllers/judgmentController";
+import express from "express";
+import {
+  triggerJudging,
+  // getJudgmentsForEval is handled in evals.routes.ts
+  deleteJudgment, // Import the new controller function
+} from "../controllers/judgmentController";
 
-const router = Router();
+const router = express.Router();
 
-// Define routes for judgments
-router.post("/", judgmentController.triggerJudging);
+// POST /api/judgments -> Trigger judging for an eval
+router.post("/", triggerJudging);
 
-// Add route for getting judgments later (e.g., GET /?evalId=... or nested under /evals)
-// router.get('/', judgmentController.getJudgmentsForEval);
+// DELETE /api/judgments/:judgmentId -> Delete a specific judgment
+router.delete("/:judgmentId", deleteJudgment);
+
+// Note: GET /api/evals/:id/judgments is defined in evals.routes.ts
 
 export default router;

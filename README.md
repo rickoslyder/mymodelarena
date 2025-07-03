@@ -4,8 +4,8 @@ A web application to generate, manage, execute, and evaluate custom evaluation s
 
 ## Features
 
-*   **Model Management:** Configure connections to different LLMs (name, base URL, API key env var, pricing).
-*   **Eval Generation:** Use LLMs to generate eval questions based on prompts.
+*   **Model Management:** Configure connections to 100+ LLMs through LiteLLM proxy with automatic pricing.
+*   **Eval Generation:** Use any supported LLM to generate eval questions based on prompts.
 *   **Eval Management:** Store, browse, search, tag, and edit eval sets and questions.
 *   **Eval Execution:** Run eval sets against multiple configured LLMs simultaneously.
 *   **Response Scoring:** Manually score responses or use an LLM judge for scoring.
@@ -17,9 +17,26 @@ A web application to generate, manage, execute, and evaluate custom evaluation s
 *   **Frontend:** React (Vite), TypeScript, TanStack Query, Zustand, CSS Modules, Recharts, React Select
 *   **Backend:** Node.js, Express, TypeScript, Prisma
 *   **Database:** SQLite
-*   **LLM Interaction:** OpenAI API protocol assumption
+*   **LLM Integration:** LiteLLM Proxy (supports 100+ providers with unified API)
 *   **Tokenizer:** gpt-tokenizer
 *   **Testing:** Vitest, React Testing Library, Playwright
+
+## LiteLLM Integration
+
+This application uses [LiteLLM](https://github.com/BerriAI/litellm) proxy to provide unified access to 100+ LLM providers including:
+- OpenAI (GPT-4, GPT-3.5, etc.)
+- Anthropic (Claude models)
+- Google (Gemini models)
+- Mistral AI models
+- Groq models
+- DeepSeek models
+- And many more...
+
+The LiteLLM proxy simplifies model management and provides:
+- **Unified API**: Single OpenAI-compatible interface for all providers
+- **Real-time Pricing**: Automatic cost calculation based on latest provider pricing
+- **Model Discovery**: Dynamic fetching of available models and their capabilities
+- **Built-in Reliability**: Automatic retries, fallbacks, and error handling
 
 ## Setup
 
@@ -33,8 +50,10 @@ A web application to generate, manage, execute, and evaluate custom evaluation s
     *   Edit the `.env` file:
         *   Verify `DATABASE_URL` (default should be fine: `file:./server/prisma/dev.db`).
         *   Verify `PORT` (default: `3001`).
-        *   For each LLM you want to use, add its API key as an environment variable (e.g., `MY_OPENAI_KEY=sk-xxx...`).
-        *   **Important:** Update the corresponding `*_API_KEY_ENV_VAR` variables in `.env` to match the names of the variables you just added (e.g., `OPENAI_API_KEY_ENV_VAR=MY_OPENAI_KEY`). The application reads the *name* from this variable to find the actual key in the environment.
+        *   **LiteLLM Configuration:**
+            *   Set `LITELLM_MASTER_KEY` to your LiteLLM proxy master key
+            *   Set `LITELLM_PROXY_URL` if using a custom proxy (defaults to the provided proxy)
+        *   **Optional:** For direct provider access (legacy), you can still set individual API keys (e.g., `OPENAI_API_KEY=sk-xxx...`)
 3.  **Install Server Dependencies:**
     ```bash
     cd server
@@ -67,6 +86,26 @@ A web application to generate, manage, execute, and evaluate custom evaluation s
     npm run dev
     ```
     *   The client development server should start (usually on port 5173) and open in your browser.
+
+## API Endpoints
+
+### LiteLLM Integration Endpoints
+- `GET /api/litellm/models` - Get all available models from LiteLLM proxy
+- `GET /api/litellm/models/:modelName` - Get detailed info for a specific model
+- `POST /api/litellm/test-connection` - Test connection to LiteLLM proxy
+
+### Model Management
+- `GET /api/models/suggested` - Get suggested models with pricing from LiteLLM
+- `POST /api/models` - Create a new model (auto-fetches pricing from LiteLLM)
+- `GET /api/models` - List all configured models
+- `GET /api/models/:id` - Get specific model details
+- `PUT /api/models/:id` - Update model configuration
+- `DELETE /api/models/:id` - Delete model
+
+### Eval Management & Execution
+- `POST /api/evals` - Generate new eval set
+- `POST /api/evals/:id/runs` - Execute eval against models
+- `GET /api/evals/runs/:id/results` - Get eval run results
 
 ## Running Tests
 

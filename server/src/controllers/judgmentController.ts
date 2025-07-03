@@ -216,3 +216,47 @@ export const getJudgmentsForEval = async (
     next(error);
   }
 };
+
+/**
+ * Deletes a specific judgment by its ID.
+ */
+export const deleteJudgment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { judgmentId } = req.params;
+
+  if (!judgmentId) {
+    return res.status(400).json({
+      success: false,
+      error: { message: "Judgment ID is required in the URL parameters." },
+    });
+  }
+
+  try {
+    // Optional: Check if judgment exists
+    const judgmentExists = await prisma.judgment.findUnique({
+      where: { id: judgmentId },
+      select: { id: true },
+    });
+
+    if (!judgmentExists) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Judgment with ID ${judgmentId} not found.` },
+      });
+    }
+
+    // Perform deletion
+    await prisma.judgment.delete({
+      where: { id: judgmentId },
+    });
+
+    console.log(`Deleted Judgment with ID: ${judgmentId}`);
+    res.status(204).send(); // No content on successful deletion
+  } catch (error) {
+    console.error(`Error deleting judgment ${judgmentId}:`, error);
+    next(error);
+  }
+};

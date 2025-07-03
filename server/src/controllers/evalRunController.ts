@@ -3,8 +3,46 @@ import prisma from "../db/prisma";
 import LlmService from "../services/llmService"; // Needed for execution logic later
 import TokenizerService from "../services/tokenizerService"; // Needed for cost calc later
 import { calculateCost } from "../utils/costUtils"; // Needed for cost calc later
-import { Model } from "@prisma/client"; // Import Model type
+import { Model, ModelPrice } from "@prisma/client"; // Import Model and ModelPrice types
 import { Prisma } from "@prisma/client"; // Import Prisma namespace
+
+// Helper to get the latest price record for cost calculation
+// Modify to accept the model identifier for lookup
+async function getLatestModelPriceData(
+  modelIdentifier: string | null // Use the canonical identifier
+): Promise<ModelPrice | null> {
+  // if (!modelId) return null; // Old check based on DB ID
+  if (!modelIdentifier) {
+    console.warn("Cannot fetch pricing data: modelIdentifier is null.");
+    return null;
+  }
+  try {
+    // Query using the modelIdentifier against ModelID and CanonicalID
+    const latestPrice = await prisma.modelPrice.findFirst({
+      where: {
+        OR: [{ ModelID: modelIdentifier }, { CanonicalID: modelIdentifier }],
+      },
+      orderBy: { Date: "desc" },
+    });
+
+    // Keep logic to find the absolute latest for the canonical ID
+    if (latestPrice) {
+      const latestCanonicalPrice = await prisma.modelPrice.findFirst({
+        where: { CanonicalID: latestPrice.CanonicalID },
+        orderBy: { Date: "desc" },
+      });
+      return latestCanonicalPrice || latestPrice;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      `Failed to fetch latest price for model identifier ${modelIdentifier}:`,
+      error
+    );
+    return null; // Don't fail the whole run if pricing lookup fails
+  }
+}
 
 interface CreateEvalRunInput {
   evalId: string;
@@ -27,22 +65,34 @@ const executeRun = async (
   let totalErrors = 0;
 
   try {
-    // 1. Fetch Eval Questions and Target Model Configs
+    // 1. Fetch Eval Questions and Target Model basic info (IDs are sufficient here)
     const evalData = await prisma.eval.findUnique({
       where: { id: evalId },
-      include: { questions: true },
+      include: { questions: { select: { id: true, text: true } } }, // Only need question id and text
     });
-    const targetModels = await prisma.model.findMany({
+    // Check if target models exist (improves error handling)
+    const targetModelCount = await prisma.model.count({
       where: { id: { in: modelIds } },
     });
-    const modelMap = new Map(targetModels.map((m: Model) => [m.id, m])); // For easy lookup
 
     if (!evalData || !evalData.questions || evalData.questions.length === 0) {
       throw new Error(`Eval ${evalId} not found or has no questions.`);
     }
-    if (targetModels.length !== modelIds.length) {
-      throw new Error(`One or more target models not found.`);
+    if (targetModelCount !== modelIds.length) {
+      console.error(
+        `Mismatch in target model IDs. Expected ${modelIds.length}, found ${targetModelCount} in DB.`
+      );
+      throw new Error(
+        `One or more target models specified in [${modelIds.join(
+          ", "
+        )}] not found in the database.`
+      );
     }
+    // Fetch full model details (including modelIdentifier) for LlmService calls and pricing lookup
+    const targetModels = await prisma.model.findMany({
+      where: { id: { in: modelIds } },
+    });
+    const modelMap = new Map(targetModels.map((m: Model) => [m.id, m]));
 
     // 2. Update EvalRun status to RUNNING
     await prisma.evalRun.update({
@@ -61,7 +111,8 @@ const executeRun = async (
         LlmService.getLLMCompletion(model, question.text).then((result) => ({
           modelId: model.id,
           questionId: question.id,
-          questionText: question.text, // Pass question text for token calculation
+          questionText: question.text,
+          modelIdentifier: model.modelIdentifier, // Pass identifier along for pricing
           ...result,
         }))
       );
@@ -70,84 +121,132 @@ const executeRun = async (
       const results = await Promise.allSettled(promises);
 
       // 4. Process results and save responses
-      const responsesToCreate = [];
+      const responsesToCreate: Prisma.ResponseCreateManyInput[] = [];
+
+      // Fetch latest prices for all models used in this batch *once*
+      const priceDataMap = new Map<string, ModelPrice | null>();
+      for (const model of targetModels) {
+        // Use the fetched models list
+        // Use modelIdentifier for the lookup key
+        const priceData = await getLatestModelPriceData(model.modelIdentifier);
+        priceDataMap.set(model.id, priceData); // Still map by internal ID for easy access later
+      }
+
       for (const result of results) {
         if (result.status === "fulfilled") {
           const {
-            modelId,
+            modelId, // Keep internal modelId for linking in Response table
             questionId,
             questionText,
             responseText,
             error,
             executionTimeMs,
+            // Note: modelIdentifier was passed but isn't directly saved in Response
           } = result.value;
-          const modelConfig = modelMap.get(modelId);
+
           let inputTokens: number | undefined = undefined;
           let outputTokens: number | undefined = undefined;
           let cost: number | undefined = undefined;
+          let calculatedCost = 0;
+          let costCalculationError = false;
+          let costErrorMsg: string | null = null; // Specific cost error message
 
-          if (!error && responseText && modelConfig) {
-            try {
-              inputTokens = TokenizerService.countTokens(questionText);
-              outputTokens = TokenizerService.countTokens(responseText);
-              cost = calculateCost(
-                modelConfig as Pick<
-                  Model,
-                  "inputTokenCost" | "outputTokenCost"
-                >,
-                inputTokens,
-                outputTokens
-              );
-            } catch (tokenError) {
-              console.error(
-                `Token/Cost calculation error for Q:${questionId}, M:${modelId}:`,
-                tokenError
-              );
+          // Find the latest price data for this specific model using its internal ID as the map key
+          const latestPriceData = priceDataMap.get(modelId);
+
+          if (!error && responseText) {
+            // Only calculate cost if LLM call succeeded
+            if (latestPriceData) {
+              // Check if pricing data was found
+              try {
+                inputTokens = TokenizerService.countTokens(questionText);
+                outputTokens = TokenizerService.countTokens(responseText);
+
+                // Convert per-1M costs to per-1k costs for the calculateCost function
+                const inputCostPer1k = latestPriceData.InputUSDPer1M / 1000;
+                const outputCostPer1k = latestPriceData.OutputUSDPer1M / 1000;
+
+                // Create a temporary object matching the structure expected by calculateCost
+                const pricingForCalc = {
+                  inputTokenCost: inputCostPer1k,
+                  outputTokenCost: outputCostPer1k,
+                };
+
+                calculatedCost = calculateCost(
+                  pricingForCalc,
+                  inputTokens,
+                  outputTokens
+                );
+                cost = calculatedCost; // Assign calculated cost
+              } catch (tokenError: any) {
+                console.error(
+                  `Token/Cost calculation error for Q:${questionId}, M:${modelId}:`,
+                  tokenError
+                );
+                costCalculationError = true;
+                costErrorMsg = "Token/cost calculation failed";
+              }
+            } else {
+              // console.warn(
+              //     `Could not find pricing data for model ${modelId}. Cost will be null.`
+              // );
+              costCalculationError = true;
+              costErrorMsg = "Pricing data not found";
             }
-          } else if (!modelConfig) {
-            console.error(`Model config not found in map for ID: ${modelId}`);
-          }
-
-          if (error) {
+          } else if (error) {
+            // If there was an LLM error, cost calculation is skipped
+            costCalculationError = true;
+            costErrorMsg = "Skipped (LLM error)";
             totalErrors++;
           }
+
+          // Combine original error with cost error if needed
+          const finalError = error
+            ? `${error}${costCalculationError ? ` (${costErrorMsg})` : ""}`
+            : costCalculationError
+            ? costErrorMsg
+            : null;
 
           responsesToCreate.push({
             evalRunId: evalRunId,
             questionId: questionId,
             modelId: modelId,
             responseText: responseText,
-            error: error,
+            // Save combined error message
+            error: finalError,
             executionTimeMs: executionTimeMs,
             inputTokens: inputTokens,
             outputTokens: outputTokens,
             cost: cost,
           });
         } else {
-          // Promise rejected (likely network error within LlmService or unhandled exception)
           totalErrors++;
           console.error(
-            `Promise rejected for question ${question.id}:`,
+            `Promise rejected for one or more models on question ${question.id}:`,
             result.reason
           );
-          // Need to figure out which model failed if possible, or log generically
-          // For now, we might not save a specific Response record for this failure
-          // Or save one with a generic error message
+          // TODO: Potentially create response record with error state here?
         }
       }
 
       if (responsesToCreate.length > 0) {
-        await prisma.response.createMany({
-          data: responsesToCreate,
-          // skipDuplicates: true, // Removed - Not supported by SQLite
-        });
+        try {
+          await prisma.response.createMany({
+            data: responsesToCreate,
+            // skipDuplicates: true, // Not supported in SQLite
+          });
+        } catch (dbError) {
+          console.error("Database error saving responses:", dbError);
+          runStatus = "FAILED";
+          totalErrors += responsesToCreate.length;
+        }
       }
     } // End of questions loop
 
     // Determine final status
-    if (totalErrors > 0) {
-      // Define failure condition (e.g., any error? > 50% errors?)
-      // For now, mark as FAILED if any error occurred
+    if (totalErrors > 0 && runStatus !== "FAILED") {
+      // Mark as COMPLETED_WITH_ERRORS if only cost errors occurred?
+      // For now, any error marks as FAILED.
       runStatus = "FAILED";
     }
   } catch (error) {
@@ -264,6 +363,54 @@ export const getEvalRunResults = async (
     // TODO: Consider pagination for responses if runs can be very large
 
     res.status(200).json({ success: true, data: evalRun });
+  } catch (error) {
+    next(error);
+  }
+};
+// NEW: Controller to get results for the LATEST completed/failed run of an Eval
+export const getLatestEvalRunResults = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id: evalId } = req.params; // Get evalId from route param
+
+  try {
+    // Find the latest run for this eval that is finished (COMPLETED or FAILED)
+    const latestFinishedRun = await prisma.evalRun.findFirst({
+      where: {
+        evalId: evalId,
+        status: { in: ["COMPLETED", "FAILED"] },
+      },
+      orderBy: {
+        createdAt: "desc", // Get the most recent one
+      },
+      include: {
+        eval: { select: { id: true, name: true } },
+        responses: {
+          include: {
+            question: { select: { id: true, text: true, createdAt: true } },
+            model: { select: { id: true, name: true } },
+            scores: true,
+          },
+          orderBy: [
+            { question: { createdAt: "asc" } },
+            { model: { name: "asc" } },
+          ],
+        },
+      },
+    });
+
+    if (!latestFinishedRun) {
+      // It's not an error, just means no runs completed yet
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: "No completed runs found for this evaluation.",
+      });
+    }
+
+    res.status(200).json({ success: true, data: latestFinishedRun });
   } catch (error) {
     next(error);
   }

@@ -1,17 +1,37 @@
-import { Router } from "express";
-import * as evalController from "../controllers/evalController"; // Import eval controller
-import * as questionController from "../controllers/questionController"; // Import question controller
-import * as tagController from "../controllers/tagController"; // Import tag controller
-import * as judgmentController from "../controllers/judgmentController"; // Import judgment controller
+import express from "express";
+import {
+  generateEvalSet,
+  generateEvalSetEnhanced,
+  getAllEvals,
+  getEvalById,
+  updateEval,
+  deleteEval,
+  regenerateEvalQuestions,
+  generateAdditionalEvalQuestions,
+} from "../controllers/evalController";
+import * as questionController from "../controllers/questionController";
+import { updateEvalTags } from "../controllers/tagController";
+import {
+  triggerJudging,
+  getJudgmentsForEval,
+} from "../controllers/judgmentController";
+import {
+  createEvalRun,
+  getEvalRunResults,
+  getLatestEvalRunResults,
+} from "../controllers/evalRunController";
 
-const router = Router();
+const router = express.Router();
 
-// Define routes for evals here
-router.post("/generate", evalController.generateEvalSet);
-router.get("/", evalController.getAllEvals);
-router.get("/:id", evalController.getEvalById);
-router.put("/:id", evalController.updateEval);
-router.delete("/:id", evalController.deleteEval);
+// Eval CRUD
+router.post("/", generateEvalSet);
+router.post("/enhanced", generateEvalSetEnhanced); // New enhanced generation endpoint
+router.get("/", getAllEvals);
+router.get("/:id", getEvalById);
+router.put("/:id", updateEval);
+router.delete("/:id", deleteEval);
+router.post("/:id/regenerate", regenerateEvalQuestions);
+router.post("/:id/add-questions", generateAdditionalEvalQuestions);
 
 // Add other eval routes later (GET /, GET /:id, PUT /:id, DELETE /:id)
 // Add question routes later (PUT /:evalId/questions/:questionId, etc.)
@@ -25,9 +45,19 @@ router.delete(
 );
 
 // --- Nested Tag Association Route ---
-router.put("/:id/tags", tagController.updateEvalTags); // Route to update tags for a specific eval
+router.put("/:id/tags", updateEvalTags);
 
 // --- Nested Judgment Route ---
-router.get("/:id/judgments", judgmentController.getJudgmentsForEval); // Get judgments for a specific eval
+router.get("/:id/judgments", getJudgmentsForEval);
+
+// Evaluation Runs
+router.post("/:id/runs", createEvalRun);
+router.get("/runs/:id/results", getEvalRunResults);
+
+// NEW: Route for latest run results for a specific eval
+router.get("/:id/latest-run/results", getLatestEvalRunResults);
+
+// Judge Mode Runs
+router.post("/:id/judge", triggerJudging);
 
 export default router;

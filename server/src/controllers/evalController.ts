@@ -1,18 +1,283 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../db/prisma";
 import LlmService from "../services/llmService";
+import { PromptEngineering } from "../services/promptEngineering";
+import { Prisma } from "@prisma/client"; // Import Prisma namespace
 
 interface GenerateEvalInput {
-  generatorModelId: string;
-  userPrompt: string;
+  generatorModelIds: string[]; // Support multiple models
+  userPrompt?: string;
+  templateId?: string; // Optional template to use
   numQuestions: number;
-  // Add structured options later if needed
-  // typeTags?: string[];
-  // topic?: string;
-  // difficulty?: string;
+  // Structured options
+  questionTypes?: string[];
+  difficulty?: string;
+  format?: string;
   evalName?: string; // Optional name for the eval set
   evalDescription?: string; // Optional description
+  // Generation mode
+  mode?: 'guided' | 'advanced';
 }
+
+interface GenerateEvalSetInput {
+  generatorModelId: string;
+  prompt: string;
+  numQuestions?: number;
+  templateId?: string;
+  questionTypes?: string[];
+  difficulty?: string;
+  format?: string;
+}
+
+// Helper function to build enhanced prompt based on template and options
+const buildEnhancedPrompt = async (
+  templateId?: string,
+  userPrompt?: string,
+  questionTypes?: string[],
+  difficulty?: string,
+  format?: string,
+  numQuestions?: number
+): Promise<string> => {
+  let basePrompt = '';
+  
+  // Use template if provided
+  if (templateId) {
+    const template = await prisma.evalTemplate.findUnique({
+      where: { id: templateId }
+    });
+    
+    if (template) {
+      basePrompt = template.prompt;
+      // Increment usage count
+      await prisma.evalTemplate.update({
+        where: { id: templateId },
+        data: { usageCount: { increment: 1 } }
+      });
+    }
+  }
+  
+  // Use user prompt if no template or as override
+  if (userPrompt) {
+    basePrompt = userPrompt;
+  }
+  
+  // Enhance with structured options
+  let enhancedPrompt = basePrompt;
+  
+  if (questionTypes && questionTypes.length > 0) {
+    enhancedPrompt += `\n\nFocus on these question types: ${questionTypes.join(', ')}`;
+  }
+  
+  if (difficulty) {
+    enhancedPrompt += `\n\nDifficulty level: ${difficulty}`;
+  }
+  
+  if (format) {
+    enhancedPrompt += `\n\nQuestion format: ${format}`;
+  }
+  
+  return enhancedPrompt;
+};
+
+// Helper function to parse LLM response
+const parseGeneratedQuestions = (responseText: string): string[] => {
+  try {
+    const parsedJson = JSON.parse(responseText);
+    // Explicitly check if parsedJson has a 'questions' property which is an array of strings
+    if (
+      parsedJson &&
+      Array.isArray(parsedJson.questions) &&
+      parsedJson.questions.every((q: any) => typeof q === "string")
+    ) {
+      return parsedJson.questions;
+    } else {
+      console.error(
+        "Parsed JSON does not match expected format { questions: string[] }:",
+        parsedJson
+      );
+      throw new Error(
+        "LLM response did not contain a valid 'questions' array."
+      );
+    }
+  } catch (error: any) {
+    console.error("Failed to parse LLM response as JSON:", responseText, error);
+    // Fallback attempt: Try splitting by newline if JSON fails and it looks like a list
+    if (typeof responseText === "string" && responseText.includes("\n")) {
+      console.warn("Falling back to newline splitting for question parsing.");
+      return responseText
+        .split("\n")
+        .map((q) => q.trim())
+        .filter((q) => q && !/^\d+\.\s*/.test(q)); // Basic cleaning
+    }
+    throw new Error(
+      `Failed to parse questions from LLM response: ${error.message}`
+    );
+  }
+};
+
+// Enhanced eval generation endpoint with template and multi-model support
+export const generateEvalSetEnhanced = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const {
+    generatorModelIds,
+    userPrompt,
+    templateId,
+    numQuestions = 10,
+    questionTypes,
+    difficulty,
+    format,
+    evalName,
+    evalDescription,
+    mode = 'guided'
+  } = req.body as GenerateEvalInput;
+
+  // Validation
+  if (!generatorModelIds || !Array.isArray(generatorModelIds) || generatorModelIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: "At least one generatorModelId is required.",
+      },
+    });
+  }
+
+  if (!templateId && !userPrompt) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: "Either templateId or userPrompt is required.",
+      },
+    });
+  }
+
+  try {
+    // Build enhanced prompt
+    const enhancedPrompt = await buildEnhancedPrompt(
+      templateId,
+      userPrompt,
+      questionTypes,
+      difficulty,
+      format,
+      numQuestions
+    );
+
+    // Use the first model for generation (for now, later we can implement consensus or best-of-N)
+    const primaryModelId = generatorModelIds[0];
+    const generatorModel = await prisma.model.findUnique({
+      where: { id: primaryModelId },
+    });
+
+    if (!generatorModel) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: `Generator model with ID ${primaryModelId} not found.`,
+        },
+      });
+    }
+
+    // Get template for enhanced prompting
+    const template = templateId ? await prisma.evalTemplate.findUnique({
+      where: { id: templateId }
+    }) : null;
+
+    // --- Construct Enhanced System Prompt using PromptEngineering service ---
+    const systemPrompt = PromptEngineering.buildSystemPrompt(numQuestions, {
+      questionTypes,
+      difficulty,
+      format,
+      numQuestions
+    });
+
+    const enhancedUserPrompt = PromptEngineering.enhanceUserPrompt(
+      enhancedPrompt,
+      { questionTypes, difficulty, format, numQuestions },
+      template || undefined
+    );
+
+    const fullPrompt = `${systemPrompt}\n\nUser Request:\n${enhancedUserPrompt}\n\nOutput JSON ({ questions: string[] }):`;
+
+    console.log(
+      `Generating enhanced eval set with prompt for model ${generatorModel.name}`
+    );
+    
+    // Call LlmService, explicitly requesting JSON output
+    const completionResult = await LlmService.getLLMCompletion(
+      generatorModel,
+      fullPrompt,
+      { max_tokens: 2048 },
+      true // Force JSON output
+    );
+
+    if (completionResult.error || !completionResult.responseText) {
+      throw new Error(
+        completionResult.error || "LLM failed to generate response."
+      );
+    }
+
+    // Parse the response
+    const rawQuestions = parseGeneratedQuestions(
+      completionResult.responseText
+    );
+
+    if (!rawQuestions || rawQuestions.length === 0) {
+      throw new Error(
+        "Failed to parse any valid questions from the LLM response."
+      );
+    }
+
+    // Validate and improve question quality
+    const { valid: generatedQuestions, issues } = PromptEngineering.validateQuestions(
+      rawQuestions,
+      { questionTypes, difficulty, format, numQuestions }
+    );
+
+    if (generatedQuestions.length === 0) {
+      throw new Error(
+        `All generated questions failed validation. Issues: ${issues.join(', ')}`
+      );
+    }
+
+    // Log quality issues for monitoring
+    if (issues.length > 0) {
+      console.warn(`Question quality issues for model ${generatorModel.name}:`, issues);
+    }
+
+    // Get quality improvement suggestions
+    const qualitySuggestions = PromptEngineering.getQualityImprovements(generatedQuestions);
+    if (qualitySuggestions.length > 0) {
+      console.log(`Quality suggestions for future generations:`, qualitySuggestions);
+    }
+
+    // Save the new Eval and Questions with enhanced metadata
+    const newEval = await prisma.eval.create({
+      data: {
+        name: evalName || `Generated Eval Set - ${new Date().toLocaleDateString()}`,
+        description: evalDescription,
+        generatorModelId: primaryModelId,
+        generationPrompt: enhancedPrompt,
+        templateId: templateId,
+        questionTypes: questionTypes ? JSON.stringify(questionTypes) : null,
+        generationFormat: format,
+        difficulty: difficulty,
+        questions: {
+          create: generatedQuestions.map((qText) => ({ text: qText })),
+        },
+      },
+      include: {
+        questions: true,
+        templateUsed: true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: newEval });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const generateEvalSet = async (
   req: Request,
@@ -21,24 +286,20 @@ export const generateEvalSet = async (
 ) => {
   const {
     generatorModelId,
-    userPrompt,
-    numQuestions = 10, // Default to 10 questions
-    evalName,
-    evalDescription,
-    // Structured options placeholder
-  } = req.body as GenerateEvalInput;
+    prompt,
+    numQuestions = 10,
+  } = req.body as GenerateEvalSetInput;
 
-  if (!generatorModelId || !userPrompt) {
+  if (!generatorModelId || !prompt) {
     return res.status(400).json({
       success: false,
       error: {
-        message: "Missing required fields: generatorModelId, userPrompt",
+        message: "Missing required fields: generatorModelId and prompt.",
       },
     });
   }
 
   try {
-    // 1. Fetch the generator model configuration
     const generatorModel = await prisma.model.findUnique({
       where: { id: generatorModelId },
     });
@@ -52,83 +313,60 @@ export const generateEvalSet = async (
       });
     }
 
-    // 2. Construct the final prompt for the LLM
-    // TODO: Incorporate structured options (difficulty, topic, types) more effectively
-    const finalPrompt = `Generate ${numQuestions} unique evaluation questions based on the following user instructions:\n\n---\n${userPrompt}\n---\n
-Output each question on a new line, numbered. Do not include any other text or preamble.`;
+    // --- Construct Enhanced Prompt ---
+    const systemPrompt = `You are an expert assistant tasked with generating a set of challenging evaluation questions for Large Language Models based on the user's request. 
+    You MUST output ONLY a single, valid JSON object. This JSON object MUST contain a single key named "questions". 
+    The value of the "questions" key MUST be a JSON array of strings, where each string is a unique evaluation question.
+    Generate exactly ${numQuestions} distinct questions. Do not include numbering in the question strings themselves.`;
 
-    // 3. Call the LlmService
+    const fullPrompt = `${systemPrompt}\n\nUser Request:\n${prompt}\n\nOutput JSON ({ questions: string[] }):`;
+
     console.log(
-      `Requesting eval generation from model: ${generatorModel.name}`
+      `Generating eval set with prompt for model ${generatorModel.name}`
     );
-    const result = await LlmService.getLLMCompletion(
+    // Call LlmService, explicitly requesting JSON output
+    const completionResult = await LlmService.getLLMCompletion(
       generatorModel,
-      finalPrompt,
-      { max_tokens: 2048 },
-      true
+      fullPrompt,
+      { max_tokens: 2048 }, // Increase max tokens potentially needed for JSON array
+      true // Force JSON output
     );
 
-    if (result.error || !result.responseText) {
-      console.error(
-        `Eval generation failed for model ${generatorModel.name}:`,
-        result.error
+    if (completionResult.error || !completionResult.responseText) {
+      throw new Error(
+        completionResult.error || "LLM failed to generate response."
       );
-      return res.status(500).json({
-        success: false,
-        error: {
-          message: `Failed to generate eval questions: ${
-            result.error || "No response text received."
-          }`,
-        },
-      });
     }
 
-    // 4. Parse the response text into questions
-    const generatedQuestions = result.responseText
-      .split("\n") // Split by newline
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0) // Remove empty lines
-      .map((line) => line.replace(/^\d+[\.\)]\s*/, "")) // Remove leading numbers/dots/spaces
-      .filter((line) => line.length > 5); // Basic filter for very short/invalid lines
-
-    if (generatedQuestions.length === 0) {
-      console.error(
-        `Could not parse any valid questions from LLM response:`,
-        result.responseText
-      );
-      return res.status(500).json({
-        success: false,
-        error: {
-          message: "Could not parse any valid questions from the LLM response.",
-        },
-      });
-    }
-
-    console.log(
-      `Successfully generated ${generatedQuestions.length} questions.`
+    // Parse the response
+    const generatedQuestions = parseGeneratedQuestions(
+      completionResult.responseText
     );
 
-    // 5. Save the new Eval and Questions to the database
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      throw new Error(
+        "Failed to parse any valid questions from the LLM response."
+      );
+    }
+
+    // Save the new Eval and Questions
     const newEval = await prisma.eval.create({
       data: {
-        name: evalName || `Generated Eval ${new Date().toISOString()}`, // Default name
-        description: evalDescription,
-        generationPrompt: userPrompt, // Store the original user prompt
-        generatorModelId: generatorModel.id,
-        // Store structured options later
+        generatorModelId: generatorModelId,
+        generationPrompt: prompt,
+        // name: `Eval Generated by ${generatorModel.name} on ${new Date().toLocaleDateString()}`, // Optional default name
         questions: {
-          create: generatedQuestions.map((text) => ({ text: text })),
+          create: generatedQuestions.map((qText) => ({ text: qText })),
         },
       },
       include: {
-        questions: true, // Include created questions in the response
+        questions: true, // Include questions in the response
       },
     });
 
     res.status(201).json({ success: true, data: newEval });
   } catch (error) {
-    console.error("Error during eval generation process:", error);
-    next(error); // Pass to global error handler
+    next(error);
   }
 };
 
@@ -137,13 +375,13 @@ export const getAllEvals = async (
   res: Response,
   next: NextFunction
 ) => {
-  // TODO: Add filtering by name/tags from req.query
+  // Basic implementation - enhance with search/filter/pagination later
   try {
     const evals = await prisma.eval.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        // Optionally include tags or question count here
-        // _count: { select: { questions: true } }
+        _count: { select: { questions: true } }, // Include question count
+        tags: { include: { tag: true } }, // Include tags
       },
     });
     res.status(200).json({ success: true, data: evals });
@@ -159,19 +397,23 @@ export const getEvalById = async (
 ) => {
   const { id } = req.params;
   try {
-    const evalData = await prisma.eval.findUniqueOrThrow({
+    const evalData = await prisma.eval.findUnique({
       where: { id },
       include: {
-        questions: {
-          // Include questions for detail view
-          orderBy: { createdAt: "asc" },
-        },
-        // Include tags later
+        questions: { orderBy: { createdAt: "asc" } },
+        tags: { include: { tag: true } }, // Include tags
+        // Include generator model later if needed
       },
     });
+    if (!evalData) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Eval with ID ${id} not found.` },
+      });
+    }
     res.status(200).json({ success: true, data: evalData });
   } catch (error) {
-    next(error); // Handles P2025
+    next(error);
   }
 };
 
@@ -188,32 +430,31 @@ export const updateEval = async (
   next: NextFunction
 ) => {
   const { id } = req.params;
-  const { name, description, difficulty } = req.body as UpdateEvalInput;
-
-  if (
-    name === undefined &&
-    description === undefined &&
-    difficulty === undefined
-  ) {
-    return res.status(400).json({
-      success: false,
-      error: { message: "No update fields provided." },
-    });
-  }
+  // Only allow updating certain fields (e.g., name, description, difficulty)
+  const { name, description, difficulty } = req.body;
 
   try {
     const updatedEval = await prisma.eval.update({
       where: { id },
       data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(difficulty !== undefined && { difficulty }),
-        updatedAt: new Date(),
+        name,
+        description,
+        difficulty,
       },
     });
     res.status(200).json({ success: true, data: updatedEval });
   } catch (error) {
-    next(error); // Handles P2025
+    // Handle potential Prisma errors (e.g., P2025 Record not found)
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Eval with ID ${id} not found.` },
+      });
+    }
+    next(error);
   }
 };
 
@@ -224,10 +465,340 @@ export const deleteEval = async (
 ) => {
   const { id } = req.params;
   try {
-    // Prisma Cascade delete will handle related Questions, EvalTags, EvalRuns, etc.
-    await prisma.eval.delete({ where: { id } });
-    res.status(204).send();
+    // Need to delete related records first due to foreign key constraints
+    // Order: Score -> Judgment -> Response -> EvalRun -> Question -> EvalTag -> Eval
+
+    // This simple delete will fail if related records exist.
+    // A transaction is needed for robust deletion.
+    // await prisma.eval.delete({ where: { id } });
+
+    // --- Transactional Delete ---
+    // Fetch related IDs first
+    const evalToDelete = await prisma.eval.findUnique({
+      where: { id },
+      include: {
+        questions: { select: { id: true } },
+        evalRuns: { select: { id: true } },
+      },
+    });
+
+    if (!evalToDelete) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Eval with ID ${id} not found.` },
+      });
+    }
+
+    const questionIds = evalToDelete.questions.map((q) => q.id);
+    const evalRunIds = evalToDelete.evalRuns.map((run) => run.id);
+
+    // Find responses related to these questions/runs
+    const responseIds = await prisma.response
+      .findMany({
+        where: {
+          OR: [
+            { questionId: { in: questionIds } },
+            { evalRunId: { in: evalRunIds } },
+          ],
+        },
+        select: { id: true },
+      })
+      .then((responses) => responses.map((r) => r.id));
+
+    await prisma.$transaction([
+      // Delete Scores related to responses
+      prisma.score.deleteMany({ where: { responseId: { in: responseIds } } }),
+      // Delete Judgments related to questions
+      prisma.judgment.deleteMany({
+        where: { questionId: { in: questionIds } },
+      }),
+      // Delete Responses
+      prisma.response.deleteMany({ where: { id: { in: responseIds } } }),
+      // Delete EvalRuns
+      prisma.evalRun.deleteMany({ where: { id: { in: evalRunIds } } }),
+      // Delete EvalTags
+      prisma.evalTag.deleteMany({ where: { evalId: id } }),
+      // Delete Questions
+      prisma.question.deleteMany({ where: { id: { in: questionIds } } }),
+      // Finally, delete the Eval itself
+      prisma.eval.delete({ where: { id } }),
+    ]);
+
+    console.log(`Deleted Eval ${id} and associated records.`);
+    res.status(204).send(); // No content
   } catch (error) {
-    next(error); // Handles P2025
+    // Handle potential Prisma errors (e.g., P2025 Record not found during transaction)
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: `Eval with ID ${id} not found or already deleted.`,
+        },
+      });
+    }
+    console.error(`Error deleting Eval ${id}:`, error);
+    next(error);
+  }
+};
+
+// Interface for Regenerate request body
+interface RegenerateEvalQuestionsInput {
+  numQuestions: number;
+}
+
+// Interface for Add Questions request body
+interface AddAdditionalEvalQuestionsInput {
+  numQuestions: number;
+}
+
+/**
+ * Regenerates questions for an existing evaluation, replacing the old ones.
+ */
+export const regenerateEvalQuestions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id: evalId } = req.params;
+  const { numQuestions } = req.body as RegenerateEvalQuestionsInput;
+
+  if (!numQuestions || numQuestions <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: "A positive number of questions (numQuestions) is required.",
+      },
+    });
+  }
+
+  try {
+    // 1. Fetch Eval details (prompt, generator model)
+    const evalData = await prisma.eval.findUnique({
+      where: { id: evalId },
+      select: { generationPrompt: true, generatorModelId: true },
+    });
+
+    if (!evalData) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Eval with ID ${evalId} not found.` },
+      });
+    }
+    if (!evalData.generationPrompt || !evalData.generatorModelId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "Cannot regenerate questions: Original prompt or generator model missing.",
+        },
+      });
+    }
+
+    const generatorModel = await prisma.model.findUnique({
+      where: { id: evalData.generatorModelId },
+    });
+
+    if (!generatorModel) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: `Original generator model with ID ${evalData.generatorModelId} not found.`,
+        },
+      });
+    }
+
+    // 2. Construct Prompt for LLM
+    const systemPrompt = `You are an expert assistant tasked with generating a set of challenging evaluation questions for Large Language Models based on the user's request. 
+        You MUST output ONLY a single, valid JSON object. This JSON object MUST contain a single key named "questions". 
+        The value of the "questions" key MUST be a JSON array of strings, where each string is a unique evaluation question.
+        Generate exactly ${numQuestions} distinct questions. Do not include numbering in the question strings themselves.`;
+    const fullPrompt = `${systemPrompt}\n\nUser Request:\n${evalData.generationPrompt}\n\nOutput JSON ({ questions: string[] }):`;
+
+    // 3. Call LlmService
+    console.log(
+      `Regenerating ${numQuestions} questions for Eval ${evalId} using model ${generatorModel.name}`
+    );
+    const completionResult = await LlmService.getLLMCompletion(
+      generatorModel,
+      fullPrompt,
+      { max_tokens: 2048 },
+      true // Force JSON
+    );
+
+    if (completionResult.error || !completionResult.responseText) {
+      throw new Error(
+        completionResult.error ||
+          "LLM failed to generate regeneration response."
+      );
+    }
+
+    // 4. Parse Response
+    const generatedQuestions = parseGeneratedQuestions(
+      completionResult.responseText
+    );
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      throw new Error(
+        "Failed to parse any valid questions from the regeneration response."
+      );
+    }
+
+    // 5. Use Transaction: Delete old questions, create new questions
+    const updatedEval = await prisma.$transaction(async (tx) => {
+      // Delete judgments/responses/scores associated with old questions first
+      const oldQuestionIds = await tx.question
+        .findMany({
+          where: { evalId: evalId },
+          select: { id: true },
+        })
+        .then((qs) => qs.map((q) => q.id));
+
+      const oldResponseIds = await tx.response
+        .findMany({
+          where: { questionId: { in: oldQuestionIds } },
+          select: { id: true },
+        })
+        .then((rs) => rs.map((r) => r.id));
+
+      await tx.score.deleteMany({
+        where: { responseId: { in: oldResponseIds } },
+      });
+      await tx.judgment.deleteMany({
+        where: { questionId: { in: oldQuestionIds } },
+      });
+      await tx.response.deleteMany({ where: { id: { in: oldResponseIds } } });
+
+      // Delete old questions
+      await tx.question.deleteMany({ where: { evalId: evalId } });
+
+      // Create new questions and link them by updating the eval
+      const updateEval = await tx.eval.update({
+        where: { id: evalId },
+        data: {
+          questions: {
+            create: generatedQuestions.map((qText) => ({ text: qText })),
+          },
+        },
+        include: { questions: true }, // Include new questions in response
+      });
+      return updateEval;
+    });
+
+    res.status(200).json({ success: true, data: updatedEval });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generates additional questions for an existing evaluation.
+ */
+export const generateAdditionalEvalQuestions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id: evalId } = req.params;
+  const { numQuestions } = req.body as AddAdditionalEvalQuestionsInput;
+
+  if (!numQuestions || numQuestions <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message:
+          "A positive number of additional questions (numQuestions) is required.",
+      },
+    });
+  }
+
+  try {
+    // 1. Fetch Eval details (prompt, generator model)
+    const evalData = await prisma.eval.findUnique({
+      where: { id: evalId },
+      select: { generationPrompt: true, generatorModelId: true },
+    });
+
+    if (!evalData) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Eval with ID ${evalId} not found.` },
+      });
+    }
+    if (!evalData.generationPrompt || !evalData.generatorModelId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "Cannot generate additional questions: Original prompt or generator model missing.",
+        },
+      });
+    }
+
+    const generatorModel = await prisma.model.findUnique({
+      where: { id: evalData.generatorModelId },
+    });
+
+    if (!generatorModel) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: `Original generator model with ID ${evalData.generatorModelId} not found.`,
+        },
+      });
+    }
+
+    // 2. Construct Prompt for LLM
+    // Similar prompt, just asking for NEW questions
+    const systemPrompt = `You are an expert assistant tasked with generating additional challenging evaluation questions for Large Language Models based on the user's request. 
+        These questions should be distinct from any previously generated ones for the same request.
+        You MUST output ONLY a single, valid JSON object. This JSON object MUST contain a single key named "questions". 
+        The value of the "questions" key MUST be a JSON array of strings, where each string is a unique evaluation question.
+        Generate exactly ${numQuestions} new distinct questions. Do not include numbering in the question strings themselves.`;
+    const fullPrompt = `${systemPrompt}\n\nOriginal User Request:\n${evalData.generationPrompt}\n\nOutput JSON ({ questions: string[] }):`;
+
+    // 3. Call LlmService
+    console.log(
+      `Generating ${numQuestions} additional questions for Eval ${evalId} using model ${generatorModel.name}`
+    );
+    const completionResult = await LlmService.getLLMCompletion(
+      generatorModel,
+      fullPrompt,
+      { max_tokens: 2048 },
+      true // Force JSON
+    );
+
+    if (completionResult.error || !completionResult.responseText) {
+      throw new Error(
+        completionResult.error ||
+          "LLM failed to generate additional questions response."
+      );
+    }
+
+    // 4. Parse Response
+    const generatedQuestions = parseGeneratedQuestions(
+      completionResult.responseText
+    );
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      throw new Error(
+        "Failed to parse any valid additional questions from the LLM response."
+      );
+    }
+
+    // 5. Add new questions to the existing Eval
+    const updatedEval = await prisma.eval.update({
+      where: { id: evalId },
+      data: {
+        questions: {
+          create: generatedQuestions.map((qText) => ({ text: qText })),
+        },
+      },
+      include: { questions: true }, // Include all questions in response
+    });
+
+    res.status(200).json({ success: true, data: updatedEval });
+  } catch (error) {
+    next(error);
   }
 };

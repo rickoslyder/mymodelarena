@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import fetch from "node-fetch";
 
+// DEPRECATED: This controller is now superseded by LiteLLM proxy integration
+// Use /api/litellm/models instead for unified model discovery across all providers
+// This controller is kept for backwards compatibility and testing purposes
+
 // Define known provider base URLs and API key env var names
 // Add more providers as needed
 const PROVIDER_CONFIG: Record<
