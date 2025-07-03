@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import TokenizerService from "./tokenizerService";
 
-// Mock gpt-tokenizer
+// Mock gpt-tokenizer with factory
 vi.mock("gpt-tokenizer", () => ({
   countTokens: vi.fn(),
 }));
@@ -12,13 +12,13 @@ describe("TokenizerService", () => {
   });
 
   describe("countTokens", () => {
-    it("should count tokens correctly for a simple string", () => {
-      const mockCountTokens = vi.fn().mockReturnValue(5);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+    it("should count tokens correctly for a simple string", async () => {
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(5);
 
       const result = TokenizerService.countTokens("Hello world");
 
-      expect(mockCountTokens).toHaveBeenCalledWith("Hello world");
+      expect(countTokens).toHaveBeenCalledWith("Hello world");
       expect(result).toBe(5);
     });
 
@@ -27,40 +27,37 @@ describe("TokenizerService", () => {
       expect(result).toBe(0);
     });
 
-    it("should handle strings with special characters", () => {
-      const mockCountTokens = vi.fn().mockReturnValue(3);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+    it("should handle strings with special characters", async () => {
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(3);
 
       const result = TokenizerService.countTokens("Hello! 🌟 How are you?");
 
-      expect(mockCountTokens).toHaveBeenCalledWith("Hello! 🌟 How are you?");
+      expect(countTokens).toHaveBeenCalledWith("Hello! 🌟 How are you?");
       expect(result).toBe(3);
     });
 
-    it("should handle very long strings", () => {
+    it("should handle very long strings", async () => {
       const longString = "word ".repeat(1000);
-      const mockCountTokens = vi.fn().mockReturnValue(2000);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(2000);
 
       const result = TokenizerService.countTokens(longString);
 
-      expect(mockCountTokens).toHaveBeenCalledWith(longString);
+      expect(countTokens).toHaveBeenCalledWith(longString);
       expect(result).toBe(2000);
     });
 
     it("should handle null and undefined gracefully", () => {
-      const mockEncode = vi.fn().mockReturnValue([]);
-      require("gpt-tokenizer").default.encode = mockEncode;
-
       expect(TokenizerService.countTokens(null as any)).toBe(0);
       expect(TokenizerService.countTokens(undefined as any)).toBe(0);
     });
 
-    it("should handle tokenizer errors gracefully", () => {
-      const mockCountTokens = vi.fn().mockImplementation(() => {
+    it("should handle tokenizer errors gracefully", async () => {
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockImplementation(() => {
         throw new Error("Tokenizer failed");
       });
-      require("gpt-tokenizer").countTokens = mockCountTokens;
 
       // Should not throw, but return a reasonable fallback
       const result = TokenizerService.countTokens("test string");
@@ -69,21 +66,21 @@ describe("TokenizerService", () => {
       expect(result).toBe(0);
     });
 
-    it("should handle multi-line strings", () => {
+    it("should handle multi-line strings", async () => {
       const multilineString = `This is a 
       multi-line string
       with different lines`;
       
-      const mockCountTokens = vi.fn().mockReturnValue(8);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(8);
 
       const result = TokenizerService.countTokens(multilineString);
 
-      expect(mockCountTokens).toHaveBeenCalledWith(multilineString);
+      expect(countTokens).toHaveBeenCalledWith(multilineString);
       expect(result).toBe(8);
     });
 
-    it("should handle code snippets", () => {
+    it("should handle code snippets", async () => {
       const codeString = `
         function hello() {
           console.log("Hello world");
@@ -91,15 +88,15 @@ describe("TokenizerService", () => {
         }
       `;
       
-      const mockCountTokens = vi.fn().mockReturnValue(15);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(15);
 
       const result = TokenizerService.countTokens(codeString);
 
       expect(result).toBe(15);
     });
 
-    it("should handle JSON strings", () => {
+    it("should handle JSON strings", async () => {
       const jsonString = JSON.stringify({
         name: "Test",
         value: 123,
@@ -109,8 +106,8 @@ describe("TokenizerService", () => {
         }
       });
       
-      const mockCountTokens = vi.fn().mockReturnValue(20);
-      require("gpt-tokenizer").countTokens = mockCountTokens;
+      const { countTokens } = await import("gpt-tokenizer");
+      vi.mocked(countTokens).mockReturnValue(20);
 
       const result = TokenizerService.countTokens(jsonString);
 

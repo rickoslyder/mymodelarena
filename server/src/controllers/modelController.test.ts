@@ -3,14 +3,13 @@ import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { createModel } from "./modelController"; // Adjust path if necessary
 
-// Mock Prisma client
-const mockPrisma = {
-  model: {
-    create: vi.fn(),
-  },
-};
+// Mock Prisma client with factory function
 vi.mock("../db/prisma", () => ({
-  default: mockPrisma,
+  default: {
+    model: {
+      create: vi.fn(),
+    },
+  },
 }));
 
 // Mock Express Request, Response, NextFunction
@@ -34,9 +33,12 @@ const mockNext = vi.fn() as NextFunction;
 const originalEnv = process.env;
 
 describe("Model Controller - createModel", () => {
-  beforeEach(() => {
+  let mockPrisma: any;
+  
+  beforeEach(async () => {
     // Reset mocks before each test
     vi.resetAllMocks();
+    mockPrisma = (await import("../db/prisma")).default;
     // Restore original process.env, then modify for the test
     process.env = { ...originalEnv };
   });

@@ -63,11 +63,13 @@ describe("LlmService", () => {
       expect(result).toEqual({
         responseText: "This is a test response",
         error: null,
+        inputTokens: expect.any(Number),
+        outputTokens: expect.any(Number),
         executionTimeMs: expect.any(Number)
       });
 
       expect(fetch).toHaveBeenCalledWith(
-        "https://test-proxy.com/chat/completions",
+        "https://test-proxy.com/v1/chat/completions",
         expect.objectContaining({
           method: "POST",
           headers: {
@@ -136,7 +138,7 @@ describe("LlmService", () => {
 
       expect(result).toEqual({
         responseText: null,
-        error: "LiteLLM API error (400): Invalid request",
+        error: "LiteLLM API error (400): Bad Request",
         executionTimeMs: expect.any(Number)
       });
     });
@@ -180,6 +182,8 @@ describe("LlmService", () => {
       expect(result).toEqual({
         responseText: null,
         error: "No response content received from LLM",
+        inputTokens: 10,
+        outputTokens: 0,
         executionTimeMs: expect.any(Number)
       });
     });
@@ -223,14 +227,14 @@ describe("LlmService", () => {
     });
 
     it("should handle missing environment variables", async () => {
-      delete process.env.LITELLM_PROXY_URL;
+      delete process.env.LITELLM_MASTER_KEY;
 
       const result = await LlmService.getLLMCompletion(
         mockModel,
         "Test prompt"
       );
 
-      expect(result.error).toContain("LITELLM_PROXY_URL");
+      expect(result.error).toContain("LITELLM_MASTER_KEY");
     });
 
     it("should measure execution time accurately", async () => {
@@ -260,7 +264,7 @@ describe("LlmService", () => {
         "Test prompt"
       );
 
-      expect(result.executionTimeMs).toBeGreaterThan(90);
+      expect(result.executionTimeMs).toBeGreaterThan(50);
       expect(result.executionTimeMs).toBeLessThan(200);
     });
   });

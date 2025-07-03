@@ -4,25 +4,25 @@ import * as evalController from "./evalController";
 import * as questionController from "./questionController";
 import LlmService from "../services/llmService";
 
-// Mock Prisma client
-const mockPrisma = {
-  eval: {
-    findMany: vi.fn(),
-    findUniqueOrThrow: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-  question: {
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-  model: {
-    findUnique: vi.fn(),
-  },
-  // Add other models as needed
-};
-vi.mock("../db/prisma", () => ({ default: mockPrisma }));
+// Mock Prisma client with factory function
+vi.mock("../db/prisma", () => ({
+  default: {
+    eval: {
+      findMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    question: {
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    model: {
+      findUnique: vi.fn(),
+    },
+  }
+}));
 vi.mock("../services/llmService"); // Mock LlmService entirely
 
 // Mock Express req/res/next (reuse from modelController.test?)
@@ -42,8 +42,11 @@ const mockResponse = () => {
 const mockNext = vi.fn() as NextFunction;
 
 describe("Eval Controller", () => {
-  beforeEach(() => {
+  let mockPrisma: any;
+  
+  beforeEach(async () => {
     vi.resetAllMocks();
+    mockPrisma = (await import("../db/prisma")).default;
   });
 
   describe("generateEvalSet", () => {

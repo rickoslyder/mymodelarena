@@ -26,26 +26,40 @@ describe.skip("TemplateService", () => {
           name: "Math Template",
           description: "Template for math questions",
           category: "mathematics",
-          difficulty: "beginner",
-          promptTemplate: "Generate math questions about {{topic}}",
-          variables: ["topic"],
-          tags: ["math", "basic"],
+          icon: null,
+          prompt: "Generate math questions about {{topic}}",
           isPublic: true,
+          isBuiltIn: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          defaultQuestionTypes: "[]",
+          defaultDifficulty: "beginner",
+          defaultFormat: "open-ended",
+          defaultCount: 10,
+          tags: '["math", "basic"]',
+          examples: "[]",
+          createdByUserId: null,
+          usageCount: 0
         },
         {
           id: "2",
           name: "Science Template",
           description: "Template for science questions",
           category: "science",
-          difficulty: "intermediate",
-          promptTemplate: "Create science questions about {{subject}} for {{level}} students",
-          variables: ["subject", "level"],
-          tags: ["science", "education"],
+          icon: null,
+          prompt: "Create science questions about {{subject}} for {{level}} students",
           isPublic: true,
+          isBuiltIn: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          defaultQuestionTypes: "[]",
+          defaultDifficulty: "intermediate",
+          defaultFormat: "open-ended",
+          defaultCount: 10,
+          tags: '["science", "education"]',
+          examples: "[]",
+          createdByUserId: null,
+          usageCount: 0
         }
       ];
 
@@ -74,13 +88,20 @@ describe.skip("TemplateService", () => {
         name: "Test Template",
         description: "A test template",
         category: "test",
-        difficulty: "beginner",
-        promptTemplate: "Test prompt with {{variable}}",
-        variables: ["variable"],
-        tags: ["test"],
+        icon: null,
+        prompt: "Test prompt with {{variable}}",
         isPublic: true,
+        isBuiltIn: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "beginner",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: '["test"]',
+        examples: "[]",
+        createdByUserId: null,
+        usageCount: 0
       };
 
       mockPrisma.template.findUnique.mockResolvedValue(mockTemplate);
@@ -108,11 +129,18 @@ describe.skip("TemplateService", () => {
         name: "New Template",
         description: "A new template",
         category: "test",
-        difficulty: "beginner" as const,
-        promptTemplate: "Create questions about {{topic}}",
-        variables: ["topic"],
-        tags: ["new", "test"],
-        isPublic: true
+        icon: null,
+        prompt: "Create questions about {{topic}}",
+        isPublic: true,
+        isBuiltIn: false,
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "beginner",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: '["new", "test"]',
+        examples: "[]",
+        createdByUserId: null,
+        usageCount: 0
       };
 
       const createdTemplate = {
@@ -137,11 +165,18 @@ describe.skip("TemplateService", () => {
         name: "", // Invalid empty name
         description: "Test",
         category: "test",
-        difficulty: "invalid" as any,
-        promptTemplate: "Test",
-        variables: [],
-        tags: [],
-        isPublic: true
+        icon: null,
+        prompt: "Test",
+        isPublic: true,
+        isBuiltIn: false,
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "invalid",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: "[]",
+        examples: "[]",
+        createdByUserId: null,
+        usageCount: 0
       };
 
       const validationError = new Error("Validation failed");
@@ -156,7 +191,7 @@ describe.skip("TemplateService", () => {
       const updateData = {
         name: "Updated Template",
         description: "Updated description",
-        tags: ["updated"]
+        tags: '["updated"]'
       };
 
       const updatedTemplate = {
@@ -164,13 +199,20 @@ describe.skip("TemplateService", () => {
         name: "Updated Template",
         description: "Updated description",
         category: "test",
-        difficulty: "beginner" as const,
-        promptTemplate: "Original prompt",
-        variables: ["var"],
-        tags: ["updated"],
+        icon: null,
+        prompt: "Original prompt",
         isPublic: true,
+        isBuiltIn: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "beginner",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: '["updated"]',
+        examples: "[]",
+        createdByUserId: null,
+        usageCount: 0
       };
 
       mockPrisma.template.update.mockResolvedValue(updatedTemplate);
@@ -199,13 +241,20 @@ describe.skip("TemplateService", () => {
         name: "Deleted Template",
         description: "To be deleted",
         category: "test",
-        difficulty: "beginner" as const,
-        promptTemplate: "Test",
-        variables: [],
-        tags: [],
+        icon: null,
+        prompt: "Test",
         isPublic: true,
+        isBuiltIn: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "beginner",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: "[]",
+        examples: "[]",
+        createdByUserId: null,
+        usageCount: 0
       };
 
       mockPrisma.template.delete.mockResolvedValue(deletedTemplate);
@@ -232,15 +281,22 @@ describe.skip("TemplateService", () => {
         {
           id: "1",
           name: "Algebra Template",
-          category: "mathematics",
-          difficulty: "intermediate" as const,
-          promptTemplate: "Generate algebra questions",
-          variables: [],
-          tags: ["algebra"],
-          isPublic: true,
           description: "Algebra questions",
+          category: "mathematics",
+          icon: null,
+          prompt: "Generate algebra questions",
+          isPublic: true,
+          isBuiltIn: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          defaultQuestionTypes: "[]",
+          defaultDifficulty: "intermediate",
+          defaultFormat: "open-ended",
+          defaultCount: 10,
+          tags: '["algebra"]',
+          examples: "[]",
+          createdByUserId: null,
+          usageCount: 0
         }
       ];
 
@@ -262,15 +318,22 @@ describe.skip("TemplateService", () => {
         {
           id: "1",
           name: "Public Template",
-          isPublic: true,
-          category: "test",
-          difficulty: "beginner" as const,
-          promptTemplate: "Public prompt",
-          variables: [],
-          tags: [],
           description: "Public template",
+          category: "test",
+          icon: null,
+          prompt: "Public prompt",
+          isPublic: true,
+          isBuiltIn: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          defaultQuestionTypes: "[]",
+          defaultDifficulty: "beginner",
+          defaultFormat: "open-ended",
+          defaultCount: 10,
+          tags: "[]",
+          examples: "[]",
+          createdByUserId: null,
+          usageCount: 0
         }
       ];
 
@@ -294,13 +357,20 @@ describe.skip("TemplateService", () => {
           name: "Math Quiz Template",
           description: "Template for creating math quizzes",
           category: "mathematics",
-          difficulty: "beginner" as const,
-          promptTemplate: "Create math quiz",
-          variables: [],
-          tags: ["math", "quiz"],
+          icon: null,
+          prompt: "Create math quiz",
           isPublic: true,
+          isBuiltIn: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          defaultQuestionTypes: "[]",
+          defaultDifficulty: "beginner",
+          defaultFormat: "open-ended",
+          defaultCount: 10,
+          tags: '["math", "quiz"]',
+          examples: "[]",
+          createdByUserId: null,
+          usageCount: 0
         }
       ];
 

@@ -2,30 +2,30 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response, NextFunction } from "express";
 import * as evalRunController from "./evalRunController";
 
-// Mock Prisma client
-const mockPrisma = {
-  evalRun: {
-    create: vi.fn(),
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-    update: vi.fn(),
-  },
-  eval: {
-    findUnique: vi.fn(),
-  },
-  model: {
-    count: vi.fn(),
-    findMany: vi.fn(),
-  },
-  response: {
-    createMany: vi.fn(),
-  },
-  modelPrice: {
-    findFirst: vi.fn(),
-  },
-};
-
-vi.mock("../db/prisma", () => ({ default: mockPrisma }));
+// Mock Prisma client with factory function
+vi.mock("../db/prisma", () => ({
+  default: {
+    evalRun: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
+    eval: {
+      findUnique: vi.fn(),
+    },
+    model: {
+      count: vi.fn(),
+      findMany: vi.fn(),
+    },
+    response: {
+      createMany: vi.fn(),
+    },
+    modelPrice: {
+      findFirst: vi.fn(),
+    },
+  }
+}));
 vi.mock("../services/llmService");
 vi.mock("../services/tokenizerService");
 vi.mock("../utils/costUtils");
@@ -48,8 +48,11 @@ const mockResponse = () => {
 const mockNext = vi.fn() as NextFunction;
 
 describe("EvalRunController", () => {
-  beforeEach(() => {
+  let mockPrisma: any;
+  
+  beforeEach(async () => {
     vi.resetAllMocks();
+    mockPrisma = (await import("../db/prisma")).default;
   });
 
   describe("createEvalRun", () => {

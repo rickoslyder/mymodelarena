@@ -14,8 +14,8 @@ interface LlmApiOptions {
 
 // Define a structure for the completion result
 interface LlmCompletionResult {
-  responseText?: string;
-  error?: string;
+  responseText?: string | null;
+  error?: string | null;
   inputTokens?: number;
   outputTokens?: number;
   executionTimeMs?: number;
@@ -26,8 +26,13 @@ interface LlmCompletionResult {
  * Simplifies the previous complex provider-specific logic by using a unified proxy.
  */
 class LlmService {
-  private static readonly LITELLM_PROXY_URL = process.env.LITELLM_PROXY_URL || "https://openai-proxy-0l7e.onrender.com";
-  private static readonly LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY;
+  private static get LITELLM_PROXY_URL() {
+    return process.env.LITELLM_PROXY_URL || "https://openai-proxy-0l7e.onrender.com";
+  }
+  
+  private static get LITELLM_MASTER_KEY() {
+    return process.env.LITELLM_MASTER_KEY;
+  }
 
   /**
    * Gets a completion from an LLM via LiteLLM proxy.
@@ -47,7 +52,17 @@ class LlmService {
     if (!this.LITELLM_MASTER_KEY) {
       console.error("LITELLM_MASTER_KEY not found in environment variables");
       return {
-        error: "Server configuration error: LiteLLM master key not found.",
+        responseText: null,
+        error: "Server configuration error: LiteLLM master key not found. Please check LITELLM_MASTER_KEY environment variable.",
+        executionTimeMs: 0,
+      };
+    }
+    
+    if (!this.LITELLM_PROXY_URL) {
+      return {
+        responseText: null,
+        error: "Server configuration error: LITELLM_PROXY_URL not found. Please check LITELLM_PROXY_URL environment variable.",
+        executionTimeMs: 0,
       };
     }
 
@@ -61,6 +76,9 @@ class LlmService {
       messages: [{ role: "user", content: prompt }],
       ...(options?.temperature !== undefined && { temperature: options.temperature }),
       ...(options?.max_tokens !== undefined && { max_tokens: options.max_tokens }),
+      ...(options?.top_p !== undefined && { top_p: options.top_p }),
+      ...(options?.frequency_penalty !== undefined && { frequency_penalty: options.frequency_penalty }),
+      ...(options?.presence_penalty !== undefined && { presence_penalty: options.presence_penalty }),
     };
 
     // Add JSON mode if requested
@@ -68,7 +86,7 @@ class LlmService {
       requestBody.response_format = { type: "json_object" };
       // Add JSON instruction to prompt as backup
       requestBody.messages[0].content += 
-        "\n\nPlease format your entire response as a single, valid JSON object. Do not include any text outside of the JSON structure.";
+        "\n\nPlease respond with valid JSON format. Your entire response should be a valid JSON object.";
     }
 
     const headers: Record<string, string> = {
@@ -97,10 +115,17 @@ class LlmService {
           `LiteLLM API Error for ${model.name}: ${response.status} ${response.statusText}`,
           errorBody
         );
+        let errorMessage = "Unknown error";
+        try {
+          const errorData = JSON.parse(errorBody);
+          errorMessage = errorData.error?.message || errorBody;
+        } catch {
+          errorMessage = response.statusText;
+        }
+        
         return {
-          error: `API request failed with status ${response.status}: ${
-            response.statusText
-          }. Details: ${errorBody.substring(0, 200)}`,
+          responseText: null,
+          error: `LiteLLM API error (${response.status}): ${errorMessage}`,
           executionTimeMs,
         };
       }
@@ -115,7 +140,8 @@ class LlmService {
       if (responseText === undefined) {
         console.error("Could not parse response text from LiteLLM:", model.name, data);
         return {
-          error: "Failed to parse response text from LLM.",
+          responseText: null,
+          error: "No response content received from LLM",
           executionTimeMs,
           inputTokens,
           outputTokens,
@@ -135,6 +161,7 @@ class LlmService {
 
       return {
         responseText,
+        error: null,
         inputTokens: finalInputTokens,
         outputTokens: finalOutputTokens,
         executionTimeMs,
@@ -143,7 +170,8 @@ class LlmService {
       const endTime = Date.now();
       console.error(`Error during LiteLLM call for ${model.name}:`, error);
       return {
-        error: `Network or other error during API call: ${error.message}`,
+        responseText: null,
+        error: `Request failed: ${error.message}`,
         executionTimeMs: endTime - startTime,
       };
     }
