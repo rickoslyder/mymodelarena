@@ -143,9 +143,18 @@ export const deleteModel = async (id: string): Promise<void> => {
 export const generateEvalSet = async (data: EvalGenFormData): Promise<Eval> => {
   // Return type might need adjustment based on backend
   try {
+    // Transform frontend data format to backend expected format
+    const backendData = {
+      generatorModelId: data.generatorModelId,
+      prompt: data.userPrompt, // Backend expects 'prompt', frontend sends 'userPrompt'
+      numQuestions: data.numQuestions,
+      evalName: data.evalName,
+      evalDescription: data.evalDescription,
+    };
+    
     const response = await apiClient.post<{ success: boolean; data: Eval }>(
-      "/evals/generate",
-      data
+      "/evals",
+      backendData
     );
     if (response.data && response.data.success) {
       return response.data.data; // Return the newly created eval set
@@ -195,7 +204,26 @@ export const getEvalById = async (id: string): Promise<Eval> => {
   }
 };
 
-// Add updateEval, deleteEval later
+export const updateEval = async (
+  evalId: string,
+  data: { name?: string; description?: string; difficulty?: string }
+): Promise<Eval> => {
+  try {
+    const response = await apiClient.put<{ success: boolean; data: Eval }>(
+      `/evals/${evalId}`,
+      data
+    );
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to update evaluation or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
 // Add question update/delete later
 // Add tag functions later
 
@@ -251,6 +279,26 @@ export const getTags = async (): Promise<Tag[]> => {
   }
 };
 
+/**
+ * Creates a new tag.
+ */
+export const createTag = async (name: string): Promise<Tag> => {
+  try {
+    const response = await apiClient.post<{ success: boolean; data: Tag }>(
+      "/tags",
+      { name }
+    );
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to create tag or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
 export const updateEvalTags = async (
   evalId: string,
   tagIds: string[]
@@ -267,6 +315,53 @@ export const updateEvalTags = async (
       "Failed to update eval tags or backend returned unsuccessful status."
     );
   } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+// --- Pricing API Functions ---
+
+// Define the structure returned by the backend pricing endpoint
+// Matches the ModelPrice structure from Prisma schema
+interface ModelPriceData {
+  id: string;
+  Provider: string;
+  ModelID: string;
+  CanonicalID: string;
+  ContextWindow: number;
+  InputUSDPer1M: number;
+  OutputUSDPer1M: number;
+  Notes: string | null;
+  Date: string; // Dates are typically strings in JSON
+}
+
+export const getLatestPricing = async (
+  modelId: string
+): Promise<ModelPriceData | null> => {
+  if (!modelId) {
+    return null; // Don't call API if no modelId
+  }
+  try {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: ModelPriceData;
+    }>(`/pricing`, { params: { modelId } });
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    // If success is false or data is missing, it might mean no price found (404 handled below)
+    // Or it could be another server issue.
+    console.warn(
+      `Pricing fetch for ${modelId} returned success=false or missing data.`
+    );
+    return null;
+  } catch (error) {
+    // Specifically check for 404 errors, which are expected if price isn't found
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      // console.log(`No pricing data found for model ID: ${modelId}`);
+      return null; // It's not an error, just no data
+    }
+    // For other errors, re-throw a formatted error message
     throw new Error(handleApiError(error));
   }
 };
@@ -380,11 +475,11 @@ export const triggerJudging = async (
   data: TriggerJudgingPayload
 ): Promise<{ message: string }> => {
   try {
-    // Backend responds with 202 Accepted
+    // Backend responds with 202 Accepted and a message
     const response = await apiClient.post<{
       success: boolean;
       message: string;
-    }>("/judgments", data);
+    }>("/judgments", data); // Endpoint should likely be /judgments based on controller/routes
     if (response.data && response.data.success) {
       return { message: response.data.message };
     }
@@ -399,20 +494,8 @@ export const triggerJudging = async (
 export const getJudgmentsForEval = async (
   evalId: string
 ): Promise<JudgmentsByQuestion> => {
-  try {
-    const response = await apiClient.get<{
-      success: boolean;
-      data: JudgmentsByQuestion;
-    }>(`/evals/${evalId}/judgments`);
-    if (response.data && response.data.success) {
-      return response.data.data;
-    }
-    throw new Error(
-      "Failed to fetch judgments or backend returned unsuccessful status."
-    );
-  } catch (error) {
-    throw new Error(handleApiError(error));
-  }
+  const response = await apiClient.get(`/evals/${evalId}/judgments`);
+  return response.data.data;
 };
 
 // --- Reporting API Functions ---
@@ -479,5 +562,257 @@ export const listProviderModels = async (
     throw new Error(handleApiError(error));
   }
 };
+
+/**
+ * Fetches the results of the latest completed/failed run for a specific eval.
+ */
+export const getLatestEvalRunResults = async (
+  evalId: string
+): Promise<EvalRunResults | null> => {
+  const response = await apiClient.get(`/evals/${evalId}/latest-run/results`);
+  return response.data.data; // API returns null in data field if no runs found
+};
+
+/**
+ * Deletes a specific model response.
+ */
+export const deleteResponse = async (responseId: string): Promise<void> => {
+  // DELETE request typically returns 204 No Content on success, so no response body expected.
+  await apiClient.delete(`/responses/${responseId}`);
+};
+
+/**
+ * Deletes a specific judgment.
+ */
+export const deleteJudgment = async (judgmentId: string): Promise<void> => {
+  await apiClient.delete(`/judgments/${judgmentId}`);
+};
+
+/**
+ * Deletes an entire evaluation set and all related data.
+ */
+export const deleteEval = async (evalId: string): Promise<void> => {
+  await apiClient.delete(`/evals/${evalId}`);
+};
+
+/**
+ * Regenerates questions for an evaluation set.
+ */
+export const regenerateEvalQuestions = async (
+  evalId: string,
+  numQuestions: number
+): Promise<Eval> => {
+  // Returns the updated Eval object
+  const response = await apiClient.post<{ success: boolean; data: Eval }>(
+    `/evals/${evalId}/regenerate`,
+    { numQuestions } // Send numQuestions in the body
+  );
+  if (response.data && response.data.success) {
+    return response.data.data;
+  }
+  throw new Error(
+    "Failed to regenerate questions or backend returned unsuccessful status."
+  );
+};
+
+/**
+ * Generates additional questions for an evaluation set.
+ */
+export const generateAdditionalEvalQuestions = async (
+  evalId: string,
+  numQuestions: number
+): Promise<Eval> => {
+  // Returns the updated Eval object
+  const response = await apiClient.post<{ success: boolean; data: Eval }>(
+    `/evals/${evalId}/add-questions`,
+    { numQuestions } // Send numQuestions in the body
+  );
+  if (response.data && response.data.success) {
+    return response.data.data;
+  }
+  throw new Error(
+    "Failed to generate additional questions or backend returned unsuccessful status."
+  );
+};
+
+// --- Template API Functions ---
+
+export interface EvalTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon?: string;
+  prompt: string;
+  isPublic: boolean;
+  isBuiltIn: boolean;
+  defaultQuestionTypes: string[];
+  defaultDifficulty: string;
+  defaultFormat: string;
+  defaultCount: number;
+  tags: string[];
+  examples: string[];
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getTemplates = async (params?: {
+  category?: string;
+  isPublic?: boolean;
+  isBuiltIn?: boolean;
+  search?: string;
+}): Promise<EvalTemplate[]> => {
+  try {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: EvalTemplate[];
+    }>("/templates", { params });
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to fetch templates or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const getTemplateById = async (id: string): Promise<EvalTemplate> => {
+  try {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: EvalTemplate;
+    }>(`/templates/${id}`);
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to fetch template or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const getTemplateCategories = async (): Promise<{name: string, count: number}[]> => {
+  try {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {name: string, count: number}[];
+    }>("/templates/categories");
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to fetch template categories or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const incrementTemplateUsage = async (id: string): Promise<void> => {
+  try {
+    await apiClient.post(`/templates/${id}/use`);
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+// Template CRUD operations
+export interface CreateTemplateData {
+  name: string;
+  description: string;
+  category: string;
+  icon?: string;
+  prompt: string;
+  isPublic: boolean;
+  defaultQuestionTypes: string[];
+  defaultDifficulty: string;
+  defaultFormat: string;
+  defaultCount: number;
+  tags: string[];
+  examples: string[];
+}
+
+export const createTemplate = async (data: CreateTemplateData): Promise<EvalTemplate> => {
+  try {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: EvalTemplate;
+    }>("/templates", data);
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to create template or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const updateTemplate = async (
+  id: string,
+  data: Partial<CreateTemplateData>
+): Promise<EvalTemplate> => {
+  try {
+    const response = await apiClient.put<{
+      success: boolean;
+      data: EvalTemplate;
+    }>(`/templates/${id}`, data);
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to update template or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const deleteTemplate = async (id: string): Promise<void> => {
+  try {
+    await apiClient.delete(`/templates/${id}`);
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+// Enhanced eval generation
+export interface EnhancedEvalGenData {
+  generatorModelIds: string[];
+  userPrompt?: string;
+  templateId?: string;
+  numQuestions: number;
+  questionTypes?: string[];
+  difficulty?: string;
+  format?: string;
+  evalName?: string;
+  evalDescription?: string;
+  mode?: 'guided' | 'advanced';
+}
+
+export const generateEvalSetEnhanced = async (data: EnhancedEvalGenData): Promise<Eval> => {
+  try {
+    const response = await apiClient.post<{ success: boolean; data: Eval }>(
+      "/evals/enhanced",
+      data
+    );
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to generate enhanced eval set or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+// Add other API functions as needed...
 
 export default apiClient;

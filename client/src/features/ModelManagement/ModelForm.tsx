@@ -1,12 +1,26 @@
 import React, { useState, useEffect, FormEvent, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query'; // Import useQuery
+import { useQuery } from '@tanstack/react-query'; // Only import useQuery
 import * as api from '../../lib/api'; // Import api
 import { Model, ProviderModelListItem } from '../../types';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select'; // Import Select
 import ErrorMessage from '../../components/common/ErrorMessage';
+import Spinner from '../../components/common/Spinner'; // Import Spinner
 import styles from './ModelForm.module.css';
+
+// Define ModelPriceData locally if not exported from types.ts
+interface ModelPriceData {
+    id: string;
+    Provider: string;
+    ModelID: string;
+    CanonicalID: string;
+    ContextWindow: number;
+    InputUSDPer1M: number;
+    OutputUSDPer1M: number;
+    Notes: string | null;
+    Date: string;
+}
 
 // Define Providers
 const PROVIDERS = [
@@ -66,6 +80,25 @@ interface ModelFormProps {
     isSubmitting?: boolean; // Loading state from useMutation
 }
 
+// --- Simple Debounce Hook ---
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        // Cleanup function that clears the timeout
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]); // Only re-call effect if value or delay changes
+
+    return debouncedValue;
+}
+// --- End Debounce Hook ---
+
 const ModelForm: React.FC<ModelFormProps> = ({
     modelToEdit,
     onSubmit,
@@ -82,12 +115,13 @@ const ModelForm: React.FC<ModelFormProps> = ({
         outputTokenCost: '',
     });
     const [errors, setErrors] = useState<FormErrors>({});
-    // Add state for cost units
-    const [inputCostUnit, setInputCostUnit] = useState<'1k' | '1m'>('1k');
-    const [outputCostUnit, setOutputCostUnit] = useState<'1k' | '1m'>('1k');
+    const [priceFetchWarning, setPriceFetchWarning] = useState<string | null>(null); // State for warnings
 
     const selectedProvider = formData.provider;
     const isCustomProvider = selectedProvider === 'custom';
+
+    // Debounce the modelIdentifier for the pricing API call
+    const debouncedModelIdentifier = useDebounce(formData.modelIdentifier || '', 500); // 500ms delay
 
     // Fetch provider models when provider changes (and isn't custom)
     const {
@@ -103,6 +137,49 @@ const ModelForm: React.FC<ModelFormProps> = ({
         retry: false, // Don't retry aggressively if API key is wrong
     });
 
+    // --- Query for fetching pricing data ---
+    const {
+        data: fetchedPriceData,
+        isLoading: isLoadingPrice,
+        isError: isPriceError,
+        error: priceError
+    } = useQuery<ModelPriceData | null, Error>({
+        queryKey: ['latestPricing', debouncedModelIdentifier],
+        queryFn: () => api.getLatestPricing(debouncedModelIdentifier),
+        enabled: !!debouncedModelIdentifier && !isCustomProvider,
+        staleTime: 1000 * 60 * 5,
+        retry: false,
+    });
+
+    // --- Effect to auto-fill costs when pricing data is fetched ---
+    useEffect(() => {
+        if (fetchedPriceData) {
+            // Calculate per-token cost
+            const inputCostPerToken = fetchedPriceData.InputUSDPer1M / 1_000_000;
+            const outputCostPerToken = fetchedPriceData.OutputUSDPer1M / 1_000_000;
+
+            setFormData(prev => ({
+                ...prev,
+                // Update costs only if they were previously empty or potentially auto-filled
+                // Avoid overwriting user's manual input unless identifier changes
+                // (This condition might need refinement based on desired UX)
+                inputTokenCost: String(inputCostPerToken),
+                outputTokenCost: String(outputCostPerToken),
+            }));
+            setPriceFetchWarning(null); // Clear warning on successful fetch
+            setErrors(prev => ({ ...prev, inputTokenCost: undefined, outputTokenCost: undefined })); // Clear cost errors
+        } else if (!isLoadingPrice && debouncedModelIdentifier && !isCustomProvider && !isPriceError) {
+            // Handle case where API call succeeded but returned null (no price found)
+            setPriceFetchWarning("Could not automatically fetch pricing for this model identifier.");
+            // Optionally clear fields if desired, or leave them for manual input
+            // setFormData(prev => ({ ...prev, inputTokenCost: '', outputTokenCost: '' })); 
+        } else if (isPriceError) {
+            setPriceFetchWarning(`Error fetching pricing: ${priceError?.message || 'Unknown error'}`);
+        }
+        // Do NOT reset warning if identifier is cleared or provider is custom
+
+    }, [fetchedPriceData, isLoadingPrice, debouncedModelIdentifier, isCustomProvider, isPriceError, priceError]);
+
     // Populate form if editing
     useEffect(() => {
         if (modelToEdit) {
@@ -116,9 +193,6 @@ const ModelForm: React.FC<ModelFormProps> = ({
                 outputTokenCost: String(modelToEdit.outputTokenCost),
             });
             setErrors({}); // Clear errors when populating form for edit
-            // Reset units to default when editing
-            setInputCostUnit('1k');
-            setOutputCostUnit('1k');
         } else {
             // Reset form if creating a new model (e.g., modal opened after editing)
             setFormData({
@@ -131,12 +205,16 @@ const ModelForm: React.FC<ModelFormProps> = ({
                 outputTokenCost: '',
             });
             setErrors({});
-            setOutputCostUnit('1k');
         }
     }, [modelToEdit]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+
+        // Clear price warning if user manually edits cost or changes identifier/provider
+        if (name === 'inputTokenCost' || name === 'outputTokenCost' || name === 'modelIdentifier' || name === 'provider') {
+            setPriceFetchWarning(null);
+        }
 
         setFormData((prev) => {
             const newState = {
@@ -211,11 +289,11 @@ const ModelForm: React.FC<ModelFormProps> = ({
 
         const inputCost = parseFloat(String(formData.inputTokenCost));
         if (isNaN(inputCost) || inputCost <= 0) {
-            newErrors.inputTokenCost = 'Input cost must be a positive number.';
+            newErrors.inputTokenCost = 'Input cost must be a positive number (per token).';
         }
         const outputCost = parseFloat(String(formData.outputTokenCost));
         if (isNaN(outputCost) || outputCost <= 0) {
-            newErrors.outputTokenCost = 'Output cost must be a positive number.';
+            newErrors.outputTokenCost = 'Output cost must be a positive number (per token).';
         }
 
         setErrors(newErrors);
@@ -226,21 +304,13 @@ const ModelForm: React.FC<ModelFormProps> = ({
         e.preventDefault();
         if (validateForm()) {
             // Prepare data for submission (convert costs back to numbers)
-            let inputCost = parseFloat(String(formData.inputTokenCost));
-            let outputCost = parseFloat(String(formData.outputTokenCost));
-
-            // Normalize costs based on selected units
-            if (inputCostUnit === '1m') {
-                inputCost = inputCost / 1000;
-            }
-            if (outputCostUnit === '1m') {
-                outputCost = outputCost / 1000;
-            }
+            const inputCost = parseFloat(String(formData.inputTokenCost));
+            const outputCost = parseFloat(String(formData.outputTokenCost));
 
             const submissionData: ModelFormData = {
                 ...formData,
-                inputTokenCost: inputCost, // Send normalized cost
-                outputTokenCost: outputCost, // Send normalized cost
+                inputTokenCost: inputCost, // Send validated number
+                outputTokenCost: outputCost, // Send validated number
                 // Set baseUrl based on provider if not custom
                 baseUrl: isCustomProvider
                     ? formData.baseUrl
@@ -251,15 +321,6 @@ const ModelForm: React.FC<ModelFormProps> = ({
             onSubmit(submissionData);
             // Note: onClose() is typically called by the mutation's onSuccess callback
         }
-    };
-
-    // Handlers for unit toggles
-    const handleInputUnitToggle = () => {
-        setInputCostUnit(prev => prev === '1k' ? '1m' : '1k');
-    };
-
-    const handleOutputUnitToggle = () => {
-        setOutputCostUnit(prev => prev === '1k' ? '1m' : '1k');
     };
 
     return (
@@ -333,39 +394,37 @@ const ModelForm: React.FC<ModelFormProps> = ({
             />
             <div className={styles.costInputContainer}>
                 <Input
-                    label="Input Token Cost"
+                    label="Input Token Cost (USD per token)"
                     name="inputTokenCost"
                     type="number"
-                    step="any"
                     value={formData.inputTokenCost}
                     onChange={handleChange}
+                    step="any" // Allow floating point
                     error={errors.inputTokenCost}
-                    placeholder="e.g., 0.001 (per 1k) or 1.00 (per 1m)"
                     required
-                    disabled={isSubmitting}
-                    className={styles.costInput} // Add class for specific styling if needed
+                    placeholder="e.g., 0.0000015"
                 />
-                <span onClick={handleInputUnitToggle} className={styles.unitToggle} role="button" aria-label={`Toggle input cost unit to per ${inputCostUnit === '1k' ? 'million' : 'thousand'} tokens`}>
-                    / {inputCostUnit === '1k' ? '1k' : '1M'} tokens
-                </span>
             </div>
             <div className={styles.costInputContainer}>
                 <Input
-                    label="Output Token Cost"
+                    label="Output Token Cost (USD per token)"
                     name="outputTokenCost"
                     type="number"
-                    step="any"
                     value={formData.outputTokenCost}
                     onChange={handleChange}
+                    step="any"
                     error={errors.outputTokenCost}
-                    placeholder="e.g., 0.002 (per 1k) or 2.00 (per 1m)"
                     required
-                    disabled={isSubmitting}
-                    className={styles.costInput}
+                    placeholder="e.g., 0.000005"
                 />
-                <span onClick={handleOutputUnitToggle} className={styles.unitToggle} role="button" aria-label={`Toggle output cost unit to per ${outputCostUnit === '1k' ? 'million' : 'thousand'} tokens`}>
-                    / {outputCostUnit === '1k' ? '1k' : '1M'} tokens
-                </span>
+            </div>
+
+            {/* Display loading/warning/error messages related to price fetching */}
+            <div className={styles.priceFetchStatus}>
+                {isLoadingPrice && <Spinner size="sm" />}
+                {priceFetchWarning && !isLoadingPrice && (
+                    <span className={styles.warningText}>{priceFetchWarning}</span>
+                )}
             </div>
 
             {/* ... formActions ... */}

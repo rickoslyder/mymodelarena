@@ -1,52 +1,105 @@
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
 import { EvalRunResults, ResponseResult, Question } from '../../types';
-import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import ManualScoreInput from '../ResponseScoring/ManualScoreInput';
 import ScoreDisplay from '../ResponseScoring/ScoreDisplay';
+import LLMScoreConfig, { LLMScoreConfigData } from '../ResponseScoring/LLMScoreConfig';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
+import Modal from '../../components/common/Modal';
+import Button from '../../components/common/Button';
 import styles from './EvalResultsTable.module.css';
-// Import ManualScoreInput later
 
 interface EvalResultsTableProps {
-    runId: string;
+    results: EvalRunResults;
 }
 
-// Helper function to format cost (optional)
 const formatCost = (cost: number | null | undefined): string => {
     if (cost === null || cost === undefined) return 'N/A';
-    return `$${cost.toFixed(5)}`; // Display cost with 5 decimal places
+    return `$${cost.toFixed(5)}`;
 };
 
-const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ runId }) => {
+const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ results }) => {
 
-    const { data: results, isLoading, error, isError } = useQuery<EvalRunResults, Error>({
-        queryKey: ['evalRunResults', runId],
-        queryFn: () => api.getEvalRunResults(runId),
-        enabled: !!runId,
+    const queryClient = useQueryClient();
+
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
+    const [isLLMScoreModalOpen, setIsLLMScoreModalOpen] = useState(false);
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => api.deleteResponse(id),
+        onSuccess: () => {
+            console.log("Response deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ['evalRunResults', results.id] });
+            queryClient.invalidateQueries({ queryKey: ['latestEvalRunResults', results.eval.id] });
+            handleCloseConfirmModal();
+        },
+        onError: (error) => {
+            console.error("Error deleting response:", error);
+            alert(`Failed to delete response: ${error.message}`);
+        },
     });
 
-    // Process results data for table rendering
+    const llmScoreMutation = useMutation({
+        mutationFn: (data: LLMScoreConfigData & { evalRunId: string }) => api.triggerLlmScoring(data),
+        onSuccess: () => {
+            console.log("LLM scoring initiated successfully");
+            queryClient.invalidateQueries({ queryKey: ['evalRunResults', results.id] });
+            queryClient.invalidateQueries({ queryKey: ['latestEvalRunResults', results.eval.id] });
+            setIsLLMScoreModalOpen(false);
+        },
+        onError: (error) => {
+            console.error("Error starting LLM scoring:", error);
+            alert(`Failed to start LLM scoring: ${error.message}`);
+        },
+    });
+
+    const handleOpenConfirmModal = (responseId: string) => {
+        setResponseToDelete(responseId);
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleCloseConfirmModal = () => {
+        setResponseToDelete(null);
+        setIsConfirmModalOpen(false);
+    };
+
+    const handleConfirmDelete = () => {
+        if (responseToDelete) {
+            deleteMutation.mutate(responseToDelete);
+        }
+    };
+
+    const handleOpenLLMScoreModal = () => {
+        setIsLLMScoreModalOpen(true);
+    };
+
+    const handleCloseLLMScoreModal = () => {
+        setIsLLMScoreModalOpen(false);
+    };
+
+    const handleLLMScoreSubmit = (configData: LLMScoreConfigData) => {
+        llmScoreMutation.mutate({ ...configData, evalRunId: results.id });
+    };
+
     const processedData = useMemo(() => {
-        // Define the specific type for question data needed
         type ProcessedQuestion = Pick<Question, 'id' | 'text' | 'createdAt'>;
         const initialState = {
             questions: [] as ProcessedQuestion[],
             modelIds: [] as string[],
-            modelNames: [] as string[], // Initialize modelNames
+            modelNames: [] as string[],
             responsesByQuestion: {} as Record<string, Record<string, ResponseResult>>
         };
         if (!results?.responses) return initialState;
 
-        // Use the specific type for the map value
         const questionsMap = new Map<string, ProcessedQuestion>();
         const modelIdsSet = new Set<string>();
         const responsesByQuestion: Record<string, Record<string, ResponseResult>> = {};
 
         results.responses.forEach(response => {
             if (!questionsMap.has(response.questionId)) {
-                // Store necessary fields
                 questionsMap.set(response.questionId, {
                     id: response.question.id,
                     text: response.question.text,
@@ -70,14 +123,8 @@ const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ runId }) => {
 
     }, [results]);
 
-    // Handle loading and error states first
-    if (isLoading) return <Spinner />;
-    if (isError) return <ErrorMessage message={error?.message || `Failed to load results for run ${runId}.`} />;
+    if (!results) return <ErrorMessage message={`No results data provided.`} />;
 
-    // Check if results object exists before accessing properties
-    if (!results) return <ErrorMessage message={`Could not load data for run ${runId}.`} />;
-
-    // Check run status only after confirming results exist
     if (results.status === 'PENDING' || results.status === 'RUNNING') {
         return (
             <div style={{ marginTop: '2rem', padding: '1rem', border: '1px dashed var(--color-border)' }}>
@@ -86,17 +133,30 @@ const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ runId }) => {
         );
     }
     if (results.responses.length === 0 && results.status === 'COMPLETED') {
-        return <ErrorMessage message={`Run ${runId} completed successfully, but no responses were generated (check run logs or model errors).`} />;
+        return <ErrorMessage message={`Run ${results.id} completed successfully, but no responses were generated (check run logs or model errors).`} />;
     }
     if (results.status === 'FAILED') {
-        return <ErrorMessage message={`Run ${runId} failed. Check server logs for details.`} />;
+        return <ErrorMessage message={`Run ${results.id} failed. Check server logs for details.`} />;
     }
 
     const { questions, modelIds, modelNames, responsesByQuestion } = processedData;
+    const runId = results.id;
 
     return (
         <div className={styles.resultsTableContainer}>
-            <h3>Results for Eval: {results.eval.name} (Run ID: {runId})</h3>
+            <div className={styles.resultsHeader}>
+                <h3>Results for Eval: {results.eval?.name || 'Unknown Eval'} (Run ID: {runId})</h3>
+                <div className={styles.headerActions}>
+                    <Button
+                        onClick={handleOpenLLMScoreModal}
+                        variant="secondary"
+                        size="sm"
+                        disabled={llmScoreMutation.isPending || results.responses.length === 0}
+                    >
+                        Score with LLM
+                    </Button>
+                </div>
+            </div>
             <table className={styles.resultsTable}>
                 <thead>
                     <tr>
@@ -104,8 +164,6 @@ const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ runId }) => {
                         {modelNames.map((name, index) => (
                             <th key={modelIds[index]} className={styles.modelColumn}>{name}</th>
                         ))}
-                        {/* Add Score column later if using manual scoring primarily */}
-                        {/* <th className={styles.scoreCell}>Score</th> */}
                     </tr>
                 </thead>
                 <tbody>
@@ -113,54 +171,91 @@ const EvalResultsTable: React.FC<EvalResultsTableProps> = ({ runId }) => {
                         <tr key={question.id}>
                             <td className={styles.questionColumn}>{question.text}</td>
                             {modelIds.map(modelId => {
-                                // Ensure question entry exists before indexing modelId
                                 const questionResponses = responsesByQuestion[question.id];
-                                const response = questionResponses?.[modelId]; // Access safely
-                                // Get the first score, if any (assuming one score per response for now)
+                                const response = questionResponses?.[modelId];
                                 const currentScore = response?.scores?.[0];
+                                const isCostError = response?.error?.toLowerCase().includes('cost') || response?.error?.toLowerCase().includes('pricing');
+                                const llmError = response?.error && !isCostError ? response.error : null;
+                                const costError = isCostError ? response?.error : null;
 
                                 return (
                                     <td key={modelId}>
                                         {response ? (
-                                            <div>
-                                                {response.error ? (
-                                                    <div className={styles.errorCell}>{response.error}</div>
-                                                ) : (
-                                                    <div className={styles.responseCell}>{response.responseText || '[No Response]'}</div>
+                                            <div className={styles.cellContent}>
+                                                {(response.responseText || llmError) && (
+                                                    <div className={styles.responseTextContainer}>
+                                                        {llmError ? (
+                                                            <div className={styles.errorCell}>{llmError}</div>
+                                                        ) : (
+                                                            <pre className={styles.responseText}>{response.responseText || '[No Response]'}</pre>
+                                                        )}
+                                                    </div>
                                                 )}
-                                                <div className={styles.tokenCell}>
-                                                    Tokens: {response.inputTokens ?? '-'} / {response.outputTokens ?? '-'}
+                                                <div className={styles.metaContainer}>
+                                                    <div className={styles.tokenCell}>
+                                                        <span>Tokens: {response.inputTokens ?? '-'} / {response.outputTokens ?? '-'}</span>
+                                                    </div>
+                                                    <div className={styles.costCell}>
+                                                        <span>Cost: {formatCost(response.cost)}</span>
+                                                        {costError && <span className={styles.costError}> ({costError})</span>}
+                                                    </div>
                                                 </div>
-                                                <div className={styles.costCell}>
-                                                    Cost: {formatCost(response.cost)}
-                                                </div>
-                                                {/* Render ManualScoreInput */}
-                                                <ManualScoreInput
-                                                    responseId={response.id}
-                                                    evalRunId={runId} // Pass runId for query invalidation
-                                                    currentScore={currentScore}
-                                                />
-                                                {/* Add ScoreDisplay/ManualScoreInput here in Step 46/49 */}
-                                                <div className={styles.scoreCell}>
+                                                <div className={styles.scoringContainer}>
                                                     <ScoreDisplay
                                                         responseId={response.id}
                                                         evalRunId={runId}
                                                         scores={response.scores || []}
                                                     />
+                                                    <ManualScoreInput
+                                                        responseId={response.id}
+                                                        evalRunId={runId}
+                                                        currentScore={currentScore}
+                                                    />
+                                                </div>
+                                                <div className={styles.actionContainer}>
+                                                    <Button
+                                                        onClick={() => handleOpenConfirmModal(response.id)}
+                                                        variant="danger"
+                                                        size="sm"
+                                                        disabled={deleteMutation.isPending}
+                                                    >
+                                                        Delete
+                                                    </Button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            '-' // No response recorded for this model/question
+                                            <span className={styles.noResponse}>N/A</span>
                                         )}
                                     </td>
                                 );
                             })}
-                            {/* Add Score cell later */}
-                            {/* <td></td> */}
                         </tr>
                     ))}
                 </tbody>
             </table>
+
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={handleCloseConfirmModal}
+                onConfirm={handleConfirmDelete}
+                title="Confirm Delete Response"
+                message="Are you sure you want to permanently delete this model response? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+            />
+
+            <Modal
+                isOpen={isLLMScoreModalOpen}
+                onClose={handleCloseLLMScoreModal}
+                title="Configure LLM Scoring"
+            >
+                <LLMScoreConfig
+                    evalRunId={results.id}
+                    onSubmit={handleLLMScoreSubmit}
+                    onClose={handleCloseLLMScoreModal}
+                    isSubmitting={llmScoreMutation.isPending}
+                />
+            </Modal>
         </div>
     );
 };

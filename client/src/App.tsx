@@ -6,6 +6,7 @@ import EvalDetailPage from './pages/EvalDetailPage'
 import EvalGenerationPage from './pages/EvalGenerationPage'
 import EvalRunPage from './pages/EvalRunPage'
 import ReportingPage from './pages/ReportingPage'
+import TemplatesPage from './pages/TemplatesPage'
 import NotFoundPage from './pages/NotFoundPage'
 // Import layout components
 import Sidebar from './components/layout/Sidebar'
@@ -58,8 +59,9 @@ function App() {
           <Route path="models" element={<ModelsPage />} />
           <Route path="evals" element={<EvalsListPage />} />
           <Route path="evals/:id" element={<EvalDetailPage />} />
-          <Route path="evals/:id/run" element={<EvalRunPage />} />
+          <Route path="evals/:evalId/run/:runId" element={<EvalRunPage />} />
           <Route path="evals/generate" element={<EvalGenerationPage />} />
+          <Route path="templates" element={<TemplatesPage />} />
           <Route path="reporting" element={<ReportingPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

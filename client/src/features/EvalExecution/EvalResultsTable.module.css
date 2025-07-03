@@ -1,50 +1,98 @@
 .resultsTableContainer {
-  margin-top: var(--space-6);
-  overflow-x: auto; /* Allow horizontal scrolling on smaller screens */
+  margin-top: 1.5rem;
+  overflow-x: auto; /* Allow horizontal scrolling for wide tables */
+}
+
+.resultsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.resultsHeader h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .resultsTable {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  background-color: var(--color-background-alt);
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  table-layout: fixed; /* Or auto, depending on desired behavior */
 }
 
 .resultsTable th,
 .resultsTable td {
-  padding: var(--space-3);
   border: 1px solid var(--color-border);
+  padding: 0.75rem;
   text-align: left;
-  vertical-align: top; /* Align content to top */
+  vertical-align: top;
+  word-wrap: break-word; /* Break long words/responses */
 }
 
 .resultsTable th {
-  background-color: var(--color-background);
+  background-color: var(--color-background-secondary);
   font-weight: 600;
-  position: sticky; /* Make header sticky */
-  top: 0;
-  z-index: 1;
 }
 
-.questionColumn {
-  min-width: 250px; /* Ensure question column has decent width */
+.questionCell {
+  width: 25%; /* Adjust width as needed */
   font-weight: 500;
 }
 
-.modelColumn {
-  min-width: 150px;
+.responseCell {
+  /* Adjust width if using table-layout: fixed */
 }
 
-.responseCell {
-  max-width: 400px; /* Limit response width */
+.responseTextContainer {
+  margin-bottom: 0.5rem; /* Space below text */
+}
+
+.responseText {
   white-space: pre-wrap; /* Preserve whitespace and wrap */
-  word-break: break-word;
+  max-height: 200px; /* Limit height and make scrollable if needed */
+  overflow-y: auto;
+  background-color: var(
+    --color-background-alt
+  ); /* Slightly different background */
+  padding: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-mono);
+}
+
+.noResponse {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.modelColumn {
+  min-width: 200px; /* Give model columns more space */
 }
 
 .errorCell {
   color: var(--color-danger);
   font-style: italic;
+  white-space: pre-wrap;
+  background-color: var(--color-danger-light);
+  padding: 0.5rem;
+  border-radius: var(--border-radius-sm);
+}
+
+.metaContainer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed var(--color-border);
 }
 
 .costCell,
@@ -54,7 +102,21 @@
   white-space: nowrap;
 }
 
+.scoringContainer {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+  /* Add styles if needed to layout ScoreDisplay and ManualScoreInput */
+}
+
+/* Remove old scoreCell if not needed */
 .scoreCell {
   /* Styles for score display will go here */
   min-width: 120px;
+}
+
+.cellContent {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Try to make cell content take full height */
 }

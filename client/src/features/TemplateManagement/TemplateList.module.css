@@ -1,0 +1,28 @@
+.templateList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.emptyState p {
+  margin: 0.5rem 0;
+}
+
+.emptyState p:first-child {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .templateList {
+    grid-template-columns: 1fr;
+  }
+}

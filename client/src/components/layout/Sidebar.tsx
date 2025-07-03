@@ -42,6 +42,14 @@ function Sidebar() {
                     </li>
                     <li>
                         <NavLink
+                            to="/templates"
+                            className={({ isActive }) => isActive ? styles.active : ''}
+                        >
+                            Templates
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink
                             to="/reporting"
                             className={({ isActive }) => isActive ? styles.active : ''}
                         >

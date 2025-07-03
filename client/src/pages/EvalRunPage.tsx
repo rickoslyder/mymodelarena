@@ -1,158 +1,66 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import toast from 'react-hot-toast'; // Import toast
+import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import * as api from '../lib/api';
-import EvalRunConfig from '../features/EvalExecution/EvalRunConfig';
-// EvalRunProgress might be removed if table handles status
-// import EvalRunProgress from '../features/EvalExecution/EvalRunProgress'; 
-import EvalResultsTable from '../features/EvalExecution/EvalResultsTable'; // Import results table
+import { EvalRunResults } from '../types';
+import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
-import Spinner from '../components/common/Spinner'; // Import Spinner
-import Button from '../components/common/Button'; // Import Button
-import Modal from '../components/common/Modal'; // Import Modal
-import LLMScoreConfig, { LLMScoreConfigData } from '../features/ResponseScoring/LLMScoreConfig'; // Import LLMScoreConfig
-import styles from './EvalRunPage.module.css'; // Import styles
-
-interface CreateEvalRunResponse {
-    evalRunId: string;
-}
-
-interface TriggerLlmScoringResponse {
-    message: string;
-}
+import EvalResultsTable from '../features/EvalExecution/EvalResultsTable';
+import styles from './EvalRunPage.module.css'; // Make sure this file exists
 
 function EvalRunPage() {
-    const { id: evalId, runId: routeRunId } = useParams<{ id: string; runId?: string }>();
+    // Get both evalId and runId from URL parameters
+    const { evalId, runId } = useParams<{ evalId: string; runId: string }>();
 
-    // State tracks the ID of the run initiated *on this page load*
-    const [initiatedRunId, setInitiatedRunId] = React.useState<string | null>(null);
-    const [isScoringModalOpen, setIsScoringModalOpen] = React.useState(false);
-
-    // Determine which run ID to display results for
-    // Priority: run just initiated on this page > run ID from route param
-    const displayRunId = initiatedRunId || routeRunId;
-
-    const createRunMutation = useMutation<CreateEvalRunResponse, Error, { evalId: string; modelIds: string[] }>({
-        mutationFn: api.createEvalRun,
-        onSuccess: (data) => {
-            console.log("Eval run started successfully, Run ID:", data.evalRunId);
-            toast.success('Evaluation run started!'); // Toast success
-            setInitiatedRunId(data.evalRunId);
-            // Optional: Could navigate to /evals/:id/run/:runId here, but 
-            // showing results directly is also fine.
-        },
-        onError: (error) => {
-            console.error("Failed to start eval run:", error.message);
-            toast.error(`Failed to start run: ${error.message}`); // Toast error
-        }
+    // Fetch Eval Run Results
+    const { data: results, isLoading, error, isError } = useQuery<
+        EvalRunResults,
+        Error
+    >({
+        queryKey: ['evalRunResults', runId], // Use runId in the query key
+        queryFn: () => api.getEvalRunResults(runId!),
+        enabled: !!runId, // Only run query if runId exists
+        // Optional: Add refetching/polling logic if needed for runs that might still be in progress
+        // refetchInterval: data => (data?.status === 'RUNNING' || data?.status === 'PENDING') ? 5000 : false,
     });
 
-    const triggerScoringMutation = useMutation<TriggerLlmScoringResponse, Error, LLMScoreConfigData & { evalRunId: string }>({
-        mutationFn: api.triggerLlmScoring,
-        onSuccess: (data) => {
-            console.log("LLM scoring trigger successful:", data.message);
-            toast.success(data.message || 'LLM scoring initiated.');
-            handleCloseScoringModal();
-            // Note: We don't invalidate results here, as scoring happens async.
-            // UI might need polling or websockets later to update scores in real-time.
-        },
-        onError: (error) => {
-            console.error("Failed to trigger LLM scoring:", error.message);
-            toast.error(`Failed to trigger LLM scoring: ${error.message}`); // Toast error
-        }
-    });
-
-    const handleStartRun = (modelIds: string[]) => {
-        if (!evalId) return;
-        console.log(`Requesting run start for Eval ${evalId} with models:`, modelIds);
-        setInitiatedRunId(null); // Clear previous initiated run ID
-        createRunMutation.mutate({ evalId, modelIds });
-    };
-
-    const handleOpenScoringModal = () => setIsScoringModalOpen(true);
-    const handleCloseScoringModal = () => {
-        setIsScoringModalOpen(false);
-        triggerScoringMutation.reset(); // Reset mutation state on close
-    };
-
-    const handleScoringSubmit = (configData: LLMScoreConfigData) => {
-        if (!displayRunId) return;
-        console.log('Submitting LLM scoring request:', { ...configData, evalRunId: displayRunId });
-        triggerScoringMutation.mutate({ ...configData, evalRunId: displayRunId });
-    };
-
-    // If no evalId is found, show error
-    if (!evalId) {
-        return <ErrorMessage message="Evaluation ID not found in URL." />;
+    // Render Logic
+    if (!evalId || !runId) {
+        return <ErrorMessage message="Missing Evaluation ID or Run ID in URL." />;
     }
-
-    // If neither a run was just initiated nor a run ID was provided in the route, 
-    // only show the config section.
-    const shouldShowResults = !!displayRunId;
-    const isTriggeringScore = triggerScoringMutation.isPending;
 
     return (
         <div className={styles.container}>
-            {/* Remove H1, Header component handles title */}
-            {/* <h1>Run Evaluation</h1> */}
+            {/* Add link back to eval detail page */}
+            <Link to={`/evals/${evalId}`} className={styles.backLink}>&larr; Back to Eval Details</Link>
+            <h2>Evaluation Run Results</h2>
+            {/* Display eval name if available in results? results?.eval?.name */}
+            {/* <p>Evaluation: {results?.eval?.name || evalId}</p> */}
+            <p>Run ID: {runId}</p>
 
-            <div className={styles.configSection}>
-                {!initiatedRunId && (
-                    <EvalRunConfig
-                        evalId={evalId!}
-                        onStartRun={handleStartRun}
-                        isRunning={createRunMutation.isPending}
-                    />
-                )}
-            </div>
-
-            {/* Spinner while initiating run */}
-            {createRunMutation.isPending && (
-                <div className={styles.statusSection}><Spinner /> Starting evaluation run...</div>
-            )}
-
-            {/* Display Results Table and Scoring Button */}
-            {shouldShowResults && displayRunId && (
-                <div className={styles.resultsSection}>
-                    <div className={styles.resultsHeader}>
-                        <h2 className={styles.resultsTitle}>Run Results</h2>
-                        <Button
-                            onClick={handleOpenScoringModal}
-                            disabled={isTriggeringScore}
-                            isLoading={isTriggeringScore}
-                        >
-                            Score Responses with LLM
-                        </Button>
-                    </div>
-                    <EvalResultsTable runId={displayRunId} />
-                </div>
-            )}
-
-            {/* Optional: Add a button to start a new run if viewing results from route param? */}
-            {routeRunId && !initiatedRunId && (
-                <div style={{ marginTop: '2rem' }}>
-                    {/* Button to potentially clear routeRunId and show config again? */}
-                </div>
-            )}
-
-            {/* --- LLM Scoring Modal --- */}
-            {displayRunId && (
-                <Modal
-                    isOpen={isScoringModalOpen}
-                    onClose={handleCloseScoringModal}
-                    title="Configure LLM Scoring"
-                >
-                    <LLMScoreConfig
-                        evalRunId={displayRunId}
-                        onSubmit={handleScoringSubmit}
-                        onClose={handleCloseScoringModal}
-                        isSubmitting={triggerScoringMutation.isPending}
-                    />
-                </Modal>
-            )}
+            {isLoading && <Spinner />}
+            {isError && <ErrorMessage message={error?.message || `Failed to load results for run ${runId}.`} />}
+            {/* Pass results to the table component */}
+            {results && <EvalResultsTable results={results} />}
         </div>
     );
 }
 
-export default EvalRunPage; 
+export default EvalRunPage;
+
+// CSS needed for styles.container, styles.backLink
+/*
+.container {
+    padding: 1rem; // Minimal padding
+}
+
+.backLink {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+.backLink:hover {
+    text-decoration: underline;
+}
+*/ 

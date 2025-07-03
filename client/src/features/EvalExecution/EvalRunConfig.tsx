@@ -1,89 +1,123 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import * as api from '../../lib/api';
 import { Model } from '../../types';
 import Button from '../../components/common/Button';
-import Spinner from '../../components/common/Spinner';
+import Checkbox from '../../components/common/Checkbox'; // Assuming Checkbox component exists
 import ErrorMessage from '../../components/common/ErrorMessage';
+import Spinner from '../../components/common/Spinner';
 import styles from './EvalRunConfig.module.css';
 
 interface EvalRunConfigProps {
-    evalId: string; // Keep in props definition for parent component usage
-    onStartRun: (modelIds: string[]) => void; // Callback when starting run
-    isRunning?: boolean; // Disable button while a run is in progress
+    evalId: string;
+    availableModels: Model[];
+    isLoadingModels: boolean;
+    modelsError?: string | null;
+    onSubmit: (selectedModelIds: string[]) => void;
+    onClose: () => void;
+    isSubmitting: boolean;
 }
 
-const EvalRunConfig: React.FC<EvalRunConfigProps> = ({ /* evalId, */ onStartRun, isRunning = false }) => {
+function EvalRunConfig({
+    evalId,
+    availableModels,
+    isLoadingModels,
+    modelsError,
+    onSubmit,
+    onClose,
+    isSubmitting,
+}: EvalRunConfigProps) {
     const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
-    const [errorMsg, setErrorMsg] = useState<string | null>(null); // State for error message
+    const [error, setError] = useState<string | null>(null);
 
-    // Fetch available models
-    const { data: models, isLoading: isLoadingModels, error: modelsError, isError: isModelsError } = useQuery<Model[], Error>({
-        queryKey: ['models'],
-        queryFn: api.getModels,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-    });
-
-    const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const { value, checked } = event.target;
-        setSelectedModelIds(prev => {
+    const handleCheckboxChange = (modelId: string, isChecked: boolean) => {
+        setError(null); // Clear error on selection change
+        setSelectedModelIds((prev) => {
             const newSet = new Set(prev);
-            if (checked) {
-                newSet.add(value);
+            if (isChecked) {
+                newSet.add(modelId);
             } else {
-                newSet.delete(value);
+                newSet.delete(modelId);
             }
             return newSet;
         });
-        setErrorMsg(null); // Clear error on change
     };
 
-    const handleStartClick = () => {
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
         if (selectedModelIds.size === 0) {
-            setErrorMsg('Please select at least one model to run the evaluation against.');
-        } else {
-            setErrorMsg(null); // Clear error message
-            onStartRun(Array.from(selectedModelIds));
+            setError('Please select at least one model to run the evaluation against.');
+            return;
         }
+        setError(null);
+        onSubmit(Array.from(selectedModelIds));
+        // onClose will typically be called by the mutation's onSuccess handler in the parent
     };
-
-    if (isLoadingModels) return <Spinner />;
-    if (isModelsError) return <ErrorMessage message={modelsError?.message || 'Failed to load models for configuration.'} />;
-    if (!models || models.length === 0) return <ErrorMessage message="No models available to run evaluation." />;
 
     return (
-        <div className={styles.container}>
-            <h2 className={styles.title}>Run Evaluation: Select Target Models</h2>
+        <form onSubmit={handleSubmit} className={styles.configForm}>
+            <h4>Select Target Models</h4>
             <div className={styles.modelList}>
-                {models.map(model => (
-                    <div key={model.id} className={styles.modelItem}>
-                        <label htmlFor={`model-${model.id}`}>
-                            <input
-                                type="checkbox"
-                                id={`model-${model.id}`}
-                                value={model.id}
-                                checked={selectedModelIds.has(model.id)}
-                                onChange={handleCheckboxChange}
-                                disabled={isRunning}
-                            />
-                            {model.name}
-                        </label>
-                    </div>
+                {isLoadingModels && <Spinner />}
+                {modelsError && <ErrorMessage message={modelsError} />}
+                {!isLoadingModels && !modelsError && availableModels.length === 0 && (
+                    <p>No models configured yet. Please add models first.</p>
+                )}
+                {!isLoadingModels && !modelsError && availableModels.map((model) => (
+                    <Checkbox
+                        key={model.id}
+                        label={model.name}
+                        id={`model-${model.id}`}
+                        checked={selectedModelIds.has(model.id)}
+                        onChange={(e) => handleCheckboxChange(model.id, e.target.checked)}
+                        disabled={isSubmitting}
+                    />
                 ))}
             </div>
-            {errorMsg && <ErrorMessage message={errorMsg} />}
-            <div className={styles.actions}>
+
+            {error && <ErrorMessage message={error} />}
+
+            <div className={styles.formActions}>
+                <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
+                    Cancel
+                </Button>
                 <Button
+                    type="submit"
                     variant="primary"
-                    onClick={handleStartClick}
-                    disabled={selectedModelIds.size === 0 || isRunning}
-                    isLoading={isRunning} // Show loading state on button if parent indicates run is starting/in progress
+                    isLoading={isSubmitting}
+                    disabled={isSubmitting || isLoadingModels || availableModels.length === 0}
                 >
                     Start Run
                 </Button>
             </div>
-        </div>
+        </form>
     );
-};
+}
 
-export default EvalRunConfig; 
+export default EvalRunConfig;
+
+// Basic CSS (Create EvalRunConfig.module.css)
+/*
+.configForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modelList {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background-color: var(--color-background-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+*/ 

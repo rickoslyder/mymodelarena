@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import Select, { MultiValue } from 'react-select';
+import CreatableSelect, { MultiValue } from 'react-select/creatable';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
 import { Tag, Eval as EvalType } from '../../types';
@@ -26,14 +26,25 @@ const TagManager: React.FC<TagManagerProps> = ({ evalData }) => {
         staleTime: 1000 * 60 * 10, // Tags don't change that often
     });
 
+    // Mutation to create a new tag
+    const createTagMutation = useMutation<Tag, Error, string>({
+        mutationFn: api.createTag,
+        onSuccess: (newTag) => {
+            // Update tags cache
+            queryClient.setQueryData(['tags'], (oldTags: Tag[] = []) => [...oldTags, newTag]);
+            console.log('Tag created successfully:', newTag.name);
+        },
+        onError: (error) => {
+            console.error('Failed to create tag:', error);
+        }
+    });
+
     // Mutation to update the eval's tags
     const updateTagsMutation = useMutation<EvalType, Error, string[]>({
         mutationFn: (tagIds) => api.updateEvalTags(evalData.id, tagIds),
         onSuccess: (updatedEval) => {
             // Update the cache for the specific eval
             queryClient.setQueryData(['eval', evalData.id], updatedEval);
-            // Optionally invalidate the general evals list query if tags are shown there
-            // queryClient.invalidateQueries({ queryKey: ['evals'] }); 
             console.log('Tags updated successfully');
         },
         onError: (error) => {
@@ -68,7 +79,24 @@ const TagManager: React.FC<TagManagerProps> = ({ evalData }) => {
         updateTagsMutation.mutate(selectedTagIds);
     };
 
-    // TODO: Add functionality to create new tags (likely requires CreatableSelect)
+    // Handle creating new tags
+    const handleCreateTag = async (inputValue: string) => {
+        const trimmedName = inputValue.trim();
+        if (!trimmedName) return;
+        
+        try {
+            const newTag = await createTagMutation.mutateAsync(trimmedName);
+            // Add the new tag to current selection
+            const newOption = { value: newTag.id, label: newTag.name };
+            const updatedSelection = [...selectedTags, newOption];
+            setSelectedTags(updatedSelection);
+            // Update eval tags with the new selection
+            const selectedTagIds = updatedSelection.map(option => option.value);
+            updateTagsMutation.mutate(selectedTagIds);
+        } catch (error) {
+            console.error('Failed to create and assign tag:', error);
+        }
+    };
 
     if (isLoadingTags) return <div>Loading tags...</div>;
     if (tagsError) return <ErrorMessage message={tagsError.message || 'Failed to load tags.'} />;
@@ -76,20 +104,22 @@ const TagManager: React.FC<TagManagerProps> = ({ evalData }) => {
     return (
         <div style={{ marginTop: 'var(--space-6)' }}>
             <h3 style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--font-size-lg)' }}>Tags</h3>
-            <Select<TagOption, true> // isMulti is true
+            <CreatableSelect<TagOption, true>
                 options={tagOptions}
                 isMulti
                 value={selectedTags}
                 onChange={handleSelectionChange}
-                placeholder="Select or add tags..."
-                isLoading={updateTagsMutation.isPending}
-                isDisabled={updateTagsMutation.isPending}
-            // Add styles or Creatable functionality later
-            // styles={{ ... }} 
-            // components={{ Option: ... }} // For custom rendering if needed
+                onCreateOption={handleCreateTag}
+                placeholder="Select or create tags..."
+                isLoading={updateTagsMutation.isPending || createTagMutation.isPending}
+                isDisabled={updateTagsMutation.isPending || createTagMutation.isPending}
+                formatCreateLabel={(inputValue) => `Create tag "${inputValue}"`}
             />
             {updateTagsMutation.isError && (
                 <ErrorMessage message={updateTagsMutation.error?.message || 'Error updating tags.'} />
+            )}
+            {createTagMutation.isError && (
+                <ErrorMessage message={createTagMutation.error?.message || 'Error creating tag.'} />
             )}
         </div>
     );

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import EvalGenForm, { EvalGenFormData } from '../features/EvalGeneration/EvalGenForm';
+import EvalGenWizard, { EvalGenWizardData } from '../features/EvalGeneration/EvalGenWizard';
 import * as api from '../lib/api';
 import { Eval as EvalType } from '../types'; // Rename imported Eval to avoid conflict
 import ErrorMessage from '../components/common/ErrorMessage'; // Import ErrorMessage
@@ -9,9 +9,9 @@ function EvalGenerationPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    // Define mutation hook
-    const generationMutation = useMutation<EvalType, Error, EvalGenFormData>({
-        mutationFn: api.generateEvalSet,
+    // Define mutation hook using enhanced API
+    const generationMutation = useMutation<EvalType, Error, api.EnhancedEvalGenData>({
+        mutationFn: api.generateEvalSetEnhanced,
         onSuccess: (data) => {
             console.log('Eval generation successful:', data);
             // Invalidate queries that might list evals
@@ -25,10 +25,27 @@ function EvalGenerationPage() {
         }
     });
 
+    // Convert wizard data to enhanced API format
+    const convertWizardDataToApiFormat = (wizardData: EvalGenWizardData): api.EnhancedEvalGenData => {
+        return {
+            generatorModelIds: wizardData.generatorModelIds,
+            userPrompt: wizardData.userPrompt,
+            templateId: wizardData.template,
+            numQuestions: wizardData.options.count,
+            questionTypes: wizardData.options.questionTypes,
+            difficulty: wizardData.options.difficulty,
+            format: wizardData.options.format,
+            evalName: wizardData.evalName,
+            evalDescription: wizardData.evalDescription,
+            mode: wizardData.mode,
+        };
+    };
+
     // Handler calls the mutation
-    const handleGenerateSubmit = (data: EvalGenFormData) => {
-        console.log('Submitting eval generation request:', data);
-        generationMutation.mutate(data);
+    const handleGenerateSubmit = (wizardData: EvalGenWizardData) => {
+        console.log('Submitting eval generation request:', wizardData);
+        const apiData = convertWizardDataToApiFormat(wizardData);
+        generationMutation.mutate(apiData);
     };
 
     return (
@@ -38,8 +55,8 @@ function EvalGenerationPage() {
                 <ErrorMessage message={generationMutation.error.message || 'Failed to generate evaluation set.'} />
             )}
 
-            {/* Render the form, passing submit handler and loading state */}
-            <EvalGenForm
+            {/* Render the wizard, passing submit handler and loading state */}
+            <EvalGenWizard
                 onSubmit={handleGenerateSubmit}
                 isSubmitting={generationMutation.isPending}
             />
