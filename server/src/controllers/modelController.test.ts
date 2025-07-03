@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { createModel } from "./modelController"; // Adjust path if necessary
+import fetch from "node-fetch";
+
+// Mock node-fetch
+vi.mock("node-fetch");
 
 // Mock Prisma client with factory function
 vi.mock("../db/prisma", () => ({
@@ -41,13 +45,22 @@ describe("Model Controller - createModel", () => {
     mockPrisma = (await import("../db/prisma")).default;
     // Restore original process.env, then modify for the test
     process.env = { ...originalEnv };
+    
+    // Mock LiteLLM pricing fetch to fail by default (tests can override)
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found"
+    } as any);
   });
 
   it("should create a model successfully with valid input", async () => {
     const reqBody = {
       name: "Test Model",
+      modelIdentifier: "test-model-v1",
       baseUrl: "http://example.com",
       apiKeyEnvVar: "TEST_API_KEY",
+      provider: "test",
       inputTokenCost: 0.001,
       outputTokenCost: 0.002,
     };
@@ -62,16 +75,20 @@ describe("Model Controller - createModel", () => {
 
     // Mock environment variable
     process.env.TEST_API_KEY = "sk-testkey";
+    process.env.LITELLM_MASTER_KEY = "sk-test-litellm";
+    
     // Mock Prisma response
     mockPrisma.model.create.mockResolvedValue(expectedModel);
 
     await createModel(req, res, mockNext);
 
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      data: expectedModel,
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expectedModel,
+      })
+    );
     expect(mockPrisma.model.create).toHaveBeenCalledWith({ data: reqBody });
     expect(mockNext).not.toHaveBeenCalled();
   });
@@ -97,6 +114,7 @@ describe("Model Controller - createModel", () => {
   it("should return 400 if token costs are not positive", async () => {
     const reqBody = {
       name: "Test Model",
+      modelIdentifier: "test-model-v1",
       baseUrl: "http://example.com",
       apiKeyEnvVar: "TEST_API_KEY",
       inputTokenCost: 0,
@@ -104,6 +122,9 @@ describe("Model Controller - createModel", () => {
     };
     const req = mockRequest(reqBody);
     const res = mockResponse();
+    
+    // Set environment variable so we pass that validation
+    process.env.TEST_API_KEY = "sk-testkey";
 
     await createModel(req, res, mockNext);
 
@@ -120,6 +141,7 @@ describe("Model Controller - createModel", () => {
   it("should return 400 if apiKeyEnvVar does not exist in environment", async () => {
     const reqBody = {
       name: "Test Model",
+      modelIdentifier: "test-model-v1",
       baseUrl: "http://example.com",
       apiKeyEnvVar: "NON_EXISTENT_KEY",
       inputTokenCost: 0.001,
@@ -148,6 +170,7 @@ describe("Model Controller - createModel", () => {
   it("should call next with error if Prisma create fails", async () => {
     const reqBody = {
       name: "Test Model Fail",
+      modelIdentifier: "test-model-fail",
       baseUrl: "http://example.com/fail",
       apiKeyEnvVar: "TEST_API_KEY_FAIL",
       inputTokenCost: 0.001,
@@ -172,6 +195,7 @@ describe("Model Controller - createModel", () => {
   it("should call next with Prisma unique constraint error", async () => {
     const reqBody = {
       name: "Duplicate Model",
+      modelIdentifier: "test-model-dup",
       baseUrl: "http://example.com/dup",
       apiKeyEnvVar: "TEST_API_KEY_DUP",
       inputTokenCost: 0.001,

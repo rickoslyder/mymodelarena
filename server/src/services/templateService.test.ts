@@ -1,25 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TemplateService } from "./templateService";
 
-// Mock Prisma client
-const mockPrisma = {
-  template: {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
+// Mock Prisma client with factory function
+vi.mock("../db/prisma", () => ({
+  default: {
+    evalTemplate: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
   },
-};
-vi.mock("../db/prisma", () => ({ default: mockPrisma }));
+}));
 
 describe.skip("TemplateService", () => {
-  beforeEach(() => {
+  let mockPrisma: any;
+  
+  beforeEach(async () => {
     vi.resetAllMocks();
+    mockPrisma = (await import("../db/prisma")).default;
   });
 
   describe("getAllTemplates", () => {
-    it("should return all templates successfully", async () => {
+    it("should return all evalTemplates successfully", async () => {
       const mockTemplates = [
         {
           id: "1",
@@ -63,30 +67,30 @@ describe.skip("TemplateService", () => {
         }
       ];
 
-      mockPrisma.template.findMany.mockResolvedValue(mockTemplates);
+      mockPrisma.evalTemplate.findMany.mockResolvedValue(mockTemplates);
 
       const result = await TemplateService.getAllTemplates();
 
       expect(result).toEqual(mockTemplates);
-      expect(mockPrisma.template.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.findMany).toHaveBeenCalledWith({
         orderBy: { createdAt: "desc" }
       });
     });
 
     it("should handle database errors", async () => {
       const dbError = new Error("Database connection failed");
-      mockPrisma.template.findMany.mockRejectedValue(dbError);
+      mockPrisma.evalTemplate.findMany.mockRejectedValue(dbError);
 
       await expect(TemplateService.getAllTemplates()).rejects.toThrow("Database connection failed");
     });
   });
 
   describe("getTemplateById", () => {
-    it("should return template by id successfully", async () => {
+    it("should return evalTemplate by id successfully", async () => {
       const mockTemplate = {
         id: "1",
         name: "Test Template",
-        description: "A test template",
+        description: "A test evalTemplate",
         category: "test",
         icon: null,
         prompt: "Test prompt with {{variable}}",
@@ -104,18 +108,18 @@ describe.skip("TemplateService", () => {
         usageCount: 0
       };
 
-      mockPrisma.template.findUnique.mockResolvedValue(mockTemplate);
+      mockPrisma.evalTemplate.findUnique.mockResolvedValue(mockTemplate);
 
       const result = await TemplateService.getTemplateById("1");
 
       expect(result).toEqual(mockTemplate);
-      expect(mockPrisma.template.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.findUnique).toHaveBeenCalledWith({
         where: { id: "1" }
       });
     });
 
-    it("should return null for non-existent template", async () => {
-      mockPrisma.template.findUnique.mockResolvedValue(null);
+    it("should return null for non-existent evalTemplate", async () => {
+      mockPrisma.evalTemplate.findUnique.mockResolvedValue(null);
 
       const result = await TemplateService.getTemplateById("non-existent");
 
@@ -124,10 +128,10 @@ describe.skip("TemplateService", () => {
   });
 
   describe("createTemplate", () => {
-    it("should create template successfully", async () => {
-      const templateData = {
+    it("should create evalTemplate successfully", async () => {
+      const evalTemplateData = {
         name: "New Template",
-        description: "A new template",
+        description: "A new evalTemplate",
         category: "test",
         icon: null,
         prompt: "Create questions about {{topic}}",
@@ -145,18 +149,18 @@ describe.skip("TemplateService", () => {
 
       const createdTemplate = {
         id: "new-id",
-        ...templateData,
+        ...evalTemplateData,
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
-      mockPrisma.template.create.mockResolvedValue(createdTemplate);
+      mockPrisma.evalTemplate.create.mockResolvedValue(createdTemplate);
 
-      const result = await TemplateService.createTemplate(templateData);
+      const result = await TemplateService.createTemplate(evalTemplateData);
 
       expect(result).toEqual(createdTemplate);
-      expect(mockPrisma.template.create).toHaveBeenCalledWith({
-        data: templateData
+      expect(mockPrisma.evalTemplate.create).toHaveBeenCalledWith({
+        data: evalTemplateData
       });
     });
 
@@ -180,14 +184,14 @@ describe.skip("TemplateService", () => {
       };
 
       const validationError = new Error("Validation failed");
-      mockPrisma.template.create.mockRejectedValue(validationError);
+      mockPrisma.evalTemplate.create.mockRejectedValue(validationError);
 
       await expect(TemplateService.createTemplate(invalidData)).rejects.toThrow("Validation failed");
     });
   });
 
   describe("updateTemplate", () => {
-    it("should update template successfully", async () => {
+    it("should update evalTemplate successfully", async () => {
       const updateData = {
         name: "Updated Template",
         description: "Updated description",
@@ -215,27 +219,27 @@ describe.skip("TemplateService", () => {
         usageCount: 0
       };
 
-      mockPrisma.template.update.mockResolvedValue(updatedTemplate);
+      mockPrisma.evalTemplate.update.mockResolvedValue(updatedTemplate);
 
       const result = await TemplateService.updateTemplate("1", updateData);
 
       expect(result).toEqual(updatedTemplate);
-      expect(mockPrisma.template.update).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.update).toHaveBeenCalledWith({
         where: { id: "1" },
         data: updateData
       });
     });
 
-    it("should handle non-existent template update", async () => {
+    it("should handle non-existent evalTemplate update", async () => {
       const updateError = new Error("Template not found");
-      mockPrisma.template.update.mockRejectedValue(updateError);
+      mockPrisma.evalTemplate.update.mockRejectedValue(updateError);
 
       await expect(TemplateService.updateTemplate("non-existent", {})).rejects.toThrow("Template not found");
     });
   });
 
   describe("deleteTemplate", () => {
-    it("should delete template successfully", async () => {
+    it("should delete evalTemplate successfully", async () => {
       const deletedTemplate = {
         id: "1",
         name: "Deleted Template",
@@ -257,26 +261,26 @@ describe.skip("TemplateService", () => {
         usageCount: 0
       };
 
-      mockPrisma.template.delete.mockResolvedValue(deletedTemplate);
+      mockPrisma.evalTemplate.delete.mockResolvedValue(deletedTemplate);
 
       const result = await TemplateService.deleteTemplate("1");
 
       expect(result).toEqual(deletedTemplate);
-      expect(mockPrisma.template.delete).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.delete).toHaveBeenCalledWith({
         where: { id: "1" }
       });
     });
 
-    it("should handle non-existent template deletion", async () => {
+    it("should handle non-existent evalTemplate deletion", async () => {
       const deleteError = new Error("Template not found");
-      mockPrisma.template.delete.mockRejectedValue(deleteError);
+      mockPrisma.evalTemplate.delete.mockRejectedValue(deleteError);
 
       await expect(TemplateService.deleteTemplate("non-existent")).rejects.toThrow("Template not found");
     });
   });
 
   describe("getTemplatesByCategory", () => {
-    it("should return templates filtered by category", async () => {
+    it("should return evalTemplates filtered by category", async () => {
       const mathTemplates = [
         {
           id: "1",
@@ -300,12 +304,12 @@ describe.skip("TemplateService", () => {
         }
       ];
 
-      mockPrisma.template.findMany.mockResolvedValue(mathTemplates);
+      mockPrisma.evalTemplate.findMany.mockResolvedValue(mathTemplates);
 
       const result = await TemplateService.getTemplatesByCategory("mathematics");
 
       expect(result).toEqual(mathTemplates);
-      expect(mockPrisma.template.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.findMany).toHaveBeenCalledWith({
         where: { category: "mathematics" },
         orderBy: { createdAt: "desc" }
       });
@@ -313,12 +317,12 @@ describe.skip("TemplateService", () => {
   });
 
   describe("getPublicTemplates", () => {
-    it("should return only public templates", async () => {
+    it("should return only public evalTemplates", async () => {
       const publicTemplates = [
         {
           id: "1",
           name: "Public Template",
-          description: "Public template",
+          description: "Public evalTemplate",
           category: "test",
           icon: null,
           prompt: "Public prompt",
@@ -337,12 +341,12 @@ describe.skip("TemplateService", () => {
         }
       ];
 
-      mockPrisma.template.findMany.mockResolvedValue(publicTemplates);
+      mockPrisma.evalTemplate.findMany.mockResolvedValue(publicTemplates);
 
       const result = await TemplateService.getPublicTemplates();
 
       expect(result).toEqual(publicTemplates);
-      expect(mockPrisma.template.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.findMany).toHaveBeenCalledWith({
         where: { isPublic: true },
         orderBy: { createdAt: "desc" }
       });
@@ -350,7 +354,7 @@ describe.skip("TemplateService", () => {
   });
 
   describe("searchTemplates", () => {
-    it("should search templates by name and description", async () => {
+    it("should search evalTemplates by name and description", async () => {
       const searchResults = [
         {
           id: "1",
@@ -374,12 +378,12 @@ describe.skip("TemplateService", () => {
         }
       ];
 
-      mockPrisma.template.findMany.mockResolvedValue(searchResults);
+      mockPrisma.evalTemplate.findMany.mockResolvedValue(searchResults);
 
       const result = await TemplateService.searchTemplates("math");
 
       expect(result).toEqual(searchResults);
-      expect(mockPrisma.template.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.evalTemplate.findMany).toHaveBeenCalledWith({
         where: {
           OR: [
             { name: { contains: "math", mode: "insensitive" } },
@@ -392,7 +396,7 @@ describe.skip("TemplateService", () => {
     });
 
     it("should handle empty search query", async () => {
-      mockPrisma.template.findMany.mockResolvedValue([]);
+      mockPrisma.evalTemplate.findMany.mockResolvedValue([]);
 
       const result = await TemplateService.searchTemplates("");
 
