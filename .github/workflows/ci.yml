@@ -24,6 +24,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
       
       - name: Install client dependencies
         run: |
@@ -64,6 +67,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
       
       - name: Install client dependencies
         run: |
@@ -88,7 +94,10 @@ jobs:
           cd server
           npm test
         env:
+          NODE_ENV: test
           DATABASE_URL: "file:./test.db"
+          LITELLM_MASTER_KEY: "test-key"
+          LITELLM_PROXY_URL: "https://test-proxy.com"
       
       - name: Run client unit tests
         run: |
@@ -109,6 +118,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
       
       - name: Install client dependencies
         run: |
@@ -138,8 +150,11 @@ jobs:
           cd server
           npm run dev &
         env:
+          NODE_ENV: test
           DATABASE_URL: "file:./e2e-test.db"
           PORT: 3001
+          LITELLM_MASTER_KEY: "test-key"
+          LITELLM_PROXY_URL: "https://test-proxy.com"
       
       - name: Start client
         run: |
@@ -181,6 +196,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
       
       - name: Install client dependencies
         run: |
@@ -225,6 +243,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
       
       - name: Audit client dependencies
         run: |
