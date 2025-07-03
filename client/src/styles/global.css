@@ -39,4 +39,63 @@ select {
   font: inherit;
 }
 
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Better focus for interactive elements */
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Remove focus outline for mouse users, keep for keyboard users */
+.js-focus-visible *:focus:not(.focus-visible) {
+  outline: none;
+}
+
+/* Responsive images and media */
+img,
+video {
+  height: auto;
+}
+
+/* Better table responsiveness */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Responsive text sizes */
+@media (max-width: 768px) {
+  body {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 0.875rem;
+  }
+}
+
+/* Utility classes for responsive design */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Add other global styles as needed */

@@ -1,10 +1,25 @@
 import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
 import styles from './Sidebar.module.css';
 
-function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
+
+function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     return (
-        <aside className={styles.sidebar}>
-            <h2>MyModelArena</h2>
+        <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
+            <div className={styles.header}>
+                <h2>MyModelArena</h2>
+                <button 
+                    className={styles.closeButton}
+                    onClick={onClose}
+                    aria-label="Close sidebar"
+                >
+                    ×
+                </button>
+            </div>
             <nav>
                 <ul>
                     <li>

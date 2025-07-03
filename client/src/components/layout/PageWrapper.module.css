@@ -1,16 +1,24 @@
 /* Basic styles for PageWrapper */
 .pageWrapper {
   flex-grow: 1; /* Take remaining space */
-  padding: 1.5rem 2rem; /* Keep padding for content spacing */
-  /* Remove max-width and centering margins */
-  /* max-width: 1200px; */
-  /* margin-left: auto; */
-  /* margin-right: auto; */
+  padding: var(--space-6) var(--space-8); /* Keep padding for content spacing */
   width: 100%;
-  background-color: #ffffff; /* White background for content area */
+  background-color: var(--color-background-alt); /* White background for content area */
   display: flex; /* Add flex display */
   flex-direction: column; /* Ensure children stack vertically */
   overflow: auto; /* Handle internal scrolling */
+  min-height: 0; /* Allow flex child to shrink */
 }
 
-/* Add other styles as needed */
+/* Responsive padding */
+@media (max-width: 768px) {
+  .pageWrapper {
+    padding: var(--space-4) var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .pageWrapper {
+    padding: var(--space-3) var(--space-3);
+  }
+}

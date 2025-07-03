@@ -169,7 +169,16 @@ export const generateEvalSet = async (data: EvalGenFormData): Promise<Eval> => {
 
 export const getEvals = async (params?: {
   searchQuery?: string;
+  status?: string;
+  difficulty?: string;
+  type?: string;
   tags?: string[];
+  sortBy?: string;
+  sortOrder?: string;
+  dateRange?: {
+    start?: string;
+    end?: string;
+  };
 }): Promise<EvalListItem[]> => {
   try {
     // Pass filter params to backend (backend needs to implement filtering)
@@ -390,6 +399,20 @@ export const createEvalRun = async (
     }
     throw new Error(
       "Failed to start eval run or backend returned unsuccessful status."
+    );
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const getEvalRunStatus = async (runId: string) => {
+  try {
+    const response = await apiClient.get(`/eval-runs/${runId}/status`);
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(
+      "Failed to fetch eval run status or backend returned unsuccessful status."
     );
   } catch (error) {
     throw new Error(handleApiError(error));

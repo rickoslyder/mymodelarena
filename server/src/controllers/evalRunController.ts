@@ -316,6 +316,78 @@ export const createEvalRun = async (
   }
 };
 
+export const getEvalRunStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id: evalRunId } = req.params;
+
+  try {
+    const evalRun = await prisma.evalRun.findUnique({
+      where: { id: evalRunId },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        eval: {
+          select: {
+            id: true,
+            name: true,
+            questions: {
+              select: { id: true }
+            }
+          }
+        },
+        responses: {
+          select: {
+            id: true,
+            questionId: true,
+            modelId: true,
+            error: true
+          }
+        }
+      }
+    });
+
+    if (!evalRun) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `EvalRun with ID ${evalRunId} not found.` }
+      });
+    }
+
+    // Calculate progress metrics
+    const totalQuestions = evalRun.eval.questions.length;
+    const totalResponses = evalRun.responses.length;
+    const successfulResponses = evalRun.responses.filter(r => !r.error).length;
+    const failedResponses = evalRun.responses.filter(r => r.error).length;
+    
+    // Calculate progress percentage
+    const progressPercentage = totalQuestions > 0 ? Math.round((totalResponses / totalQuestions) * 100) : 0;
+
+    const statusData = {
+      id: evalRun.id,
+      status: evalRun.status,
+      createdAt: evalRun.createdAt,
+      updatedAt: evalRun.updatedAt,
+      eval: evalRun.eval,
+      progress: {
+        percentage: progressPercentage,
+        totalQuestions,
+        totalResponses,
+        successfulResponses,
+        failedResponses
+      }
+    };
+
+    res.status(200).json({ success: true, data: statusData });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getEvalRunResults = async (
   req: Request,
   res: Response,

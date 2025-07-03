@@ -12,6 +12,10 @@ import Textarea from '../../components/common/Textarea';
 import Select from '../../components/common/Select';
 import Checkbox from '../../components/common/Checkbox';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import AdvancedPromptEditor from '../../components/advanced/AdvancedPromptEditor';
+import QuestionTypeSelector from '../../components/advanced/QuestionTypeSelector';
+import DifficultySelector from '../../components/advanced/DifficultySelector';
+import { BUILT_IN_PROMPT_TEMPLATES } from '../../components/advanced/promptTemplates';
 import styles from './TemplateForm.module.css';
 
 interface TemplateFormProps {
@@ -90,6 +94,9 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       onSuccess?.(newTemplate);
       onClose();
     },
+    onError: (error: any) => {
+      console.error('Failed to create template:', error);
+    },
   });
 
   const updateMutation = useMutation({
@@ -100,6 +107,9 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ['template', template?.id] });
       onSuccess?.(updatedTemplate);
       onClose();
+    },
+    onError: (error: any) => {
+      console.error('Failed to update template:', error);
     },
   });
 
@@ -243,23 +253,29 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       </div>
 
       <div className={styles.field}>
-        <Textarea
+        <AdvancedPromptEditor
           label="Prompt"
           value={formData.prompt}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('prompt', e.target.value)}
-          required
+          onChange={(value) => handleInputChange('prompt', value)}
           placeholder="The main prompt that will be used to generate questions..."
-          rows={6}
+          variables={{
+            count: formData.defaultCount,
+            difficulty: formData.defaultDifficulty,
+            format: formData.defaultFormat,
+          }}
+          templates={BUILT_IN_PROMPT_TEMPLATES}
         />
       </div>
 
       <div className={styles.grid}>
         <div className={styles.field}>
-          <Select
+          <DifficultySelector
+            selectedDifficulty={formData.defaultDifficulty}
+            onChange={(difficulty) => handleInputChange('defaultDifficulty', difficulty)}
             label="Default Difficulty"
-            value={formData.defaultDifficulty}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleInputChange('defaultDifficulty', e.target.value)}
-            options={DIFFICULTY_OPTIONS}
+            variant="buttons"
+            showDetails={false}
+            required={true}
           />
         </div>
 
@@ -286,17 +302,13 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label}>Default Question Types</label>
-        <div className={styles.checkboxGrid}>
-          {QUESTION_TYPE_OPTIONS.map(type => (
-            <Checkbox
-              key={type}
-              label={type.replace('-', ' ')}
-              checked={formData.defaultQuestionTypes.includes(type)}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleQuestionTypeToggle(type)}
-            />
-          ))}
-        </div>
+        <QuestionTypeSelector
+          selectedTypes={formData.defaultQuestionTypes}
+          onChange={(selectedTypes) => handleInputChange('defaultQuestionTypes', selectedTypes)}
+          label="Default Question Types"
+          showCategories={true}
+          maxSelections={8}
+        />
       </div>
 
       <div className={styles.field}>

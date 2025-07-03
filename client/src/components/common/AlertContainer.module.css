@@ -1,0 +1,79 @@
+.alertContainer {
+  position: fixed;
+  z-index: 9999;
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.alertContainer > * {
+  pointer-events: auto;
+}
+
+/* Position variants */
+.alertContainer.topRight {
+  top: 1rem;
+  right: 1rem;
+}
+
+.alertContainer.topLeft {
+  top: 1rem;
+  left: 1rem;
+}
+
+.alertContainer.bottomRight {
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.alertContainer.bottomLeft {
+  bottom: 1rem;
+  left: 1rem;
+}
+
+.alertContainer.topCenter {
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.alertContainer.bottomCenter {
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .alertContainer {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+    width: auto;
+  }
+  
+  .alertContainer.topCenter,
+  .alertContainer.bottomCenter {
+    transform: none;
+  }
+  
+  .alertContainer.topRight,
+  .alertContainer.topLeft,
+  .alertContainer.topCenter {
+    top: 1rem;
+  }
+  
+  .alertContainer.bottomRight,
+  .alertContainer.bottomLeft,
+  .alertContainer.bottomCenter {
+    bottom: 1rem;
+  }
+}
+
+/* Ensure alerts don't interfere with page content on small screens */
+@media (max-width: 480px) {
+  .alertContainer {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+}

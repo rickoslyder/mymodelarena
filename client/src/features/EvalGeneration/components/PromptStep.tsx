@@ -3,6 +3,8 @@ import { EvalGenWizardData, EvalGenOptions } from '../EvalGenWizard';
 import { Model } from '../../../types';
 import Textarea from '../../../components/common/Textarea';
 import Button from '../../../components/common/Button';
+import AdvancedPromptEditor from '../../../components/advanced/AdvancedPromptEditor';
+import { BUILT_IN_PROMPT_TEMPLATES } from '../../../components/advanced/promptTemplates';
 import styles from '../EvalGenWizard.module.css';
 
 interface PromptStepProps {
@@ -114,14 +116,18 @@ const PromptStep: React.FC<PromptStepProps> = ({
             </p>
           </div>
 
-          <Textarea
+          <AdvancedPromptEditor
             label="Customize Prompt (Optional)"
-            id="customPrompt"
-            name="customPrompt"
             value={formData.userPrompt || ''}
-            onChange={handlePromptChange}
+            onChange={(value) => updateFormData({ userPrompt: value })}
             placeholder="You can modify the auto-generated prompt above or write your own..."
-            rows={8}
+            variables={{
+              count: formData.options.count,
+              difficulty: formData.options.difficulty,
+              format: formData.options.format,
+              ...(formData.options.domain && { domain: formData.options.domain }),
+            }}
+            templates={BUILT_IN_PROMPT_TEMPLATES.filter(t => t.category === 'Question Types')}
           />
 
           {!formData.template && (
@@ -161,63 +167,35 @@ const PromptStep: React.FC<PromptStepProps> = ({
   }
 
   // Advanced mode
+  const promptVariables = {
+    count: formData.options.count,
+    difficulty: formData.options.difficulty,
+    format: formData.options.format,
+    ...(formData.options.domain && { domain: formData.options.domain }),
+  };
+
   return (
     <div className={styles.stepContent}>
       <div className={styles.stepHeader}>
-        <h2 className={styles.stepTitle}>Custom Prompt</h2>
+        <h2 className={styles.stepTitle}>Advanced Prompt Editor</h2>
         <p className={styles.stepSubtitle}>
-          Write your custom prompt for question generation
+          Create custom prompts with templates, variables, and syntax highlighting
         </p>
       </div>
 
       <div className={styles.formSection}>
-        <Textarea
+        <AdvancedPromptEditor
           label="Generation Prompt"
-          id="userPrompt"
-          name="userPrompt"
           value={formData.userPrompt || ''}
-          onChange={handlePromptChange}
+          onChange={(value) => updateFormData({ userPrompt: value })}
           placeholder="Write detailed instructions for the LLM on how to generate evaluation questions..."
-          rows={12}
-          required
+          variables={promptVariables}
+          templates={BUILT_IN_PROMPT_TEMPLATES}
+          onTemplateSelect={(template) => {
+            // Could add analytics or other side effects here
+            console.log('Template selected:', template.name);
+          }}
         />
-        
-        <div style={{ marginTop: 'var(--space-3)' }}>
-          <details>
-            <summary style={{ cursor: 'pointer', fontWeight: 500, marginBottom: 'var(--space-2)' }}>
-              Prompt Engineering Tips
-            </summary>
-            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-              <ul>
-                <li>Be specific about the type of questions you want</li>
-                <li>Include examples of good questions if possible</li>
-                <li>Specify the difficulty level and target audience</li>
-                <li>Mention the format (open-ended, multiple choice, etc.)</li>
-                <li>Add constraints to ensure quality (no duplicates, proper difficulty)</li>
-                <li>The system will automatically add JSON formatting instructions</li>
-              </ul>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <div className={styles.formSection}>
-        <h3 className={styles.sectionTitle}>Template Variables</h3>
-        <p className={styles.sectionDescription}>
-          You can use these variables in your prompt:
-        </p>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: 'var(--space-2)',
-          fontSize: 'var(--font-size-sm)',
-          fontFamily: 'monospace'
-        }}>
-          <div><code>{`{{count}}`}</code> - Number of questions ({formData.options.count})</div>
-          <div><code>{`{{difficulty}}`}</code> - Difficulty level ({formData.options.difficulty})</div>
-          <div><code>{`{{format}}`}</code> - Question format ({formData.options.format})</div>
-          {formData.options.domain && <div><code>{`{{domain}}`}</code> - Domain ({formData.options.domain})</div>}
-        </div>
       </div>
     </div>
   );

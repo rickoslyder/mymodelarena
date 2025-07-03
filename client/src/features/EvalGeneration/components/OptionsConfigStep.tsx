@@ -4,6 +4,7 @@ import { Model } from '../../../types';
 import Input from '../../../components/common/Input';
 import Select from '../../../components/common/Select';
 import Textarea from '../../../components/common/Textarea';
+import DifficultySelector from '../../../components/advanced/DifficultySelector';
 import styles from '../EvalGenWizard.module.css';
 
 interface OptionsConfigStepProps {
@@ -162,26 +163,13 @@ const OptionsConfigStep: React.FC<OptionsConfigStepProps> = ({
 
       {/* Difficulty Selection */}
       <div className={styles.formSection}>
-        <h3 className={styles.sectionTitle}>Difficulty Level</h3>
-        <p className={styles.sectionDescription}>
-          Choose the target difficulty for generated questions
-        </p>
-        
-        <div className={styles.selectionGrid}>
-          {DIFFICULTY_LEVELS.map((level) => (
-            <div 
-              key={level.value}
-              className={`${styles.selectionCard} ${
-                formData.options.difficulty === level.value ? styles.selected : ''
-              }`}
-              onClick={() => handleDifficultySelect(level.value as any)}
-            >
-              <div className={styles.cardIcon}>{level.icon}</div>
-              <div className={styles.cardTitle}>{level.label}</div>
-              <div className={styles.cardDescription}>{level.description}</div>
-            </div>
-          ))}
-        </div>
+        <DifficultySelector
+          selectedDifficulty={formData.options.difficulty}
+          onChange={(difficulty) => updateOptions({ difficulty })}
+          variant="cards"
+          showDetails={true}
+          required={true}
+        />
       </div>
 
       {/* Question Format */}

@@ -24,13 +24,28 @@ function getTitleFromPathname(pathname: string): string {
     return title;
 }
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    onMenuToggle?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
     const location = useLocation();
     const title = getTitleFromPathname(location.pathname);
 
     return (
         <header className={styles.header}>
-            <h1 className={styles.title}>{title}</h1>
+            <div className={styles.headerContent}>
+                <button 
+                    className={styles.menuButton}
+                    onClick={onMenuToggle}
+                    aria-label="Toggle menu"
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1 className={styles.title}>{title}</h1>
+            </div>
             {/* Add breadcrumbs or user info later */}
         </header>
     );

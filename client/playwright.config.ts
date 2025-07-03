@@ -5,14 +5,22 @@ const baseURL = "http://localhost:5173"; // Default Vite dev port
 
 export default defineConfig({
   testDir: "./e2e", // Directory where tests live
-  fullyParallel: true, // Run tests in parallel
+  fullyParallel: false, // Run tests sequentially to avoid conflicts
   forbidOnly: !!process.env.CI, // Fail build on CI if accidentally left test.only
   retries: process.env.CI ? 2 : 0, // Retry on CI only
-  workers: process.env.CI ? 1 : undefined, // Use defined workers on CI
-  reporter: "html", // Generates HTML report
+  workers: process.env.CI ? 1 : 1, // Use single worker to avoid conflicts
+  reporter: [["html"], ["list"]], // Generates HTML report and list output
+  timeout: 30000, // 30 second timeout
+  expect: {
+    timeout: 10000, // 10 second timeout for assertions
+  },
   use: {
     baseURL: baseURL,
     trace: "on-first-retry", // Record trace only when retrying a failed test
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
+    actionTimeout: 10000,
+    navigationTimeout: 30000,
   },
   projects: [
     {

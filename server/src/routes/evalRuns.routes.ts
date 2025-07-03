@@ -7,7 +7,7 @@ const router = Router();
 router.post("/", evalRunController.createEvalRun);
 
 // Add routes for getting status or results later
-// router.get('/:id/status', ...);
+router.get('/:id/status', evalRunController.getEvalRunStatus);
 router.get("/:id/results", evalRunController.getEvalRunResults);
 
 export default router;

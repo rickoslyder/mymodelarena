@@ -1,12 +1,61 @@
 .tagChip {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-1) var(--space-2);
   border-radius: var(--border-radius-lg);
-  font-size: var(--font-size-xs);
   font-weight: 500;
-  background-color: var(--color-primary);
-  color: var(--color-text-on-primary);
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+  gap: 0.25rem;
+}
 
-  border: 1px solid var(--color-primary-hover);
+.tagChip.md {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.tagChip.sm {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.7rem;
+}
+
+.tagChip.removable {
+  padding-right: 0.25rem;
+}
+
+.tagChip.removable:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.label {
+  line-height: 1.2;
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.125rem;
+  transition: all 0.15s;
+}
+
+.removeButton:hover {
+  background-color: #ef4444;
+  color: white;
+}
+
+.removeButton:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 1px;
 }

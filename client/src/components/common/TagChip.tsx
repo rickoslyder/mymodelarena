@@ -3,13 +3,36 @@ import styles from './TagChip.module.css';
 
 interface TagChipProps {
     label: string;
-    // Add onClick or other props later if needed (e.g., for removal)
+    onRemove?: () => void;
+    variant?: 'default' | 'removable';
+    size?: 'sm' | 'md';
 }
 
-const TagChip: React.FC<TagChipProps> = ({ label }) => {
+const TagChip: React.FC<TagChipProps> = ({ 
+    label, 
+    onRemove, 
+    variant = 'default',
+    size = 'md' 
+}) => {
+    const chipClasses = [
+        styles.tagChip,
+        styles[variant],
+        styles[size],
+        onRemove ? styles.removable : ''
+    ].filter(Boolean).join(' ');
+
     return (
-        <span className={styles.tagChip}>
-            {label}
+        <span className={chipClasses}>
+            <span className={styles.label}>{label}</span>
+            {onRemove && (
+                <button
+                    className={styles.removeButton}
+                    onClick={onRemove}
+                    aria-label={`Remove ${label} tag`}
+                >
+                    ×
+                </button>
+            )}
         </span>
     );
 };

@@ -1,0 +1,256 @@
+.filterContainer {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.basicFilters {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.searchSection {
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchInput {
+  width: 100%;
+}
+
+.quickFilters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  min-width: 150px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.advancedFilters {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filterLabel {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.dateRange {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dateSeparator {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.sortControls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tagFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tagInput {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.tagInput input {
+  flex: 1;
+}
+
+.availableTags,
+.activeTags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tagsLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.availableTag {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-primary);
+  margin-right: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.availableTag:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.availableTag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filterSummary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  margin-bottom: -1.5rem;
+}
+
+.summaryText {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .filterContainer {
+    padding: 1rem;
+  }
+  
+  .basicFilters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .quickFilters {
+    flex-direction: column;
+  }
+  
+  .filterSelect {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .actionButtons {
+    justify-content: center;
+  }
+  
+  .filterRow {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .dateRange {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .dateSeparator {
+    text-align: center;
+    margin: 0.25rem 0;
+  }
+  
+  .sortControls {
+    flex-direction: column;
+  }
+  
+  .tagInput {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filterSummary {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: -1rem;
+  }
+}
+
+/* Animation for advanced filters */
+.advancedFilters {
+  animation: slideDown 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    padding-top: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+  }
+}
+
+/* Focus states */
+.availableTag:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 1px;
+}
+
+.searchInput:focus-within {
+  border-color: var(--primary-500);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .filterContainer {
+    border-width: 2px;
+  }
+  
+  .availableTag {
+    border-width: 2px;
+  }
+}

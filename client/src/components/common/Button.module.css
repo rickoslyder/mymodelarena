@@ -8,9 +8,19 @@
   font-weight: 500;
   font-size: var(--font-size-sm);
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out,
-    color 0.2s ease-in-out;
+  transition: background-color var(--transition-base) ease-in-out, 
+              border-color var(--transition-base) ease-in-out,
+              color var(--transition-base) ease-in-out,
+              transform var(--transition-fast) ease-in-out;
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  min-height: 2.5rem;
+  text-decoration: none;
+}
+
+.button:active {
+  transform: translateY(1px);
 }
 
 .button:focus {
@@ -71,4 +81,37 @@
 .lg {
   padding: var(--space-3) var(--space-6);
   font-size: var(--font-size-base);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .button {
+    padding: var(--space-2) var(--space-3);
+    min-height: 2.25rem;
+    font-size: var(--font-size-sm);
+  }
+  
+  .sm {
+    padding: var(--space-1) var(--space-2);
+    min-height: 2rem;
+  }
+  
+  .lg {
+    padding: var(--space-3) var(--space-4);
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .button {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-xs);
+    min-height: 2rem;
+  }
+  
+  .lg {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    min-height: 2.5rem;
+  }
 }

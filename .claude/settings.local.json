@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(timeout 10s npm run dev)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npx ts-node:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(find:*)",
+      "Bash(npx tsx:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:openai-proxy-0l7e.onrender.com)",
+      "Bash(npx vite:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(ls:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)"
+    ],
+    "deny": []
+  }
+}

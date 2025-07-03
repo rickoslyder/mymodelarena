@@ -1,6 +1,7 @@
 import React from 'react';
 import { EvalGenWizardData, EvalGenOptions } from '../EvalGenWizard';
 import { Model } from '../../../types';
+import QuestionTypeSelector from '../../../components/advanced/QuestionTypeSelector';
 import styles from '../EvalGenWizard.module.css';
 
 interface TypeSelectionStepProps {
@@ -138,21 +139,13 @@ const TypeSelectionStep: React.FC<TypeSelectionStepProps> = ({
         </div>
 
         {/* Still show type selection for modification */}
-        <div className={styles.selectionGrid}>
-          {QUESTION_TYPES.map((type) => (
-            <div 
-              key={type.id}
-              className={`${styles.selectionCard} ${
-                formData.options.questionTypes.includes(type.id) ? styles.selected : ''
-              }`}
-              onClick={() => handleTypeToggle(type.id)}
-            >
-              <div className={styles.cardIcon}>{type.icon}</div>
-              <div className={styles.cardTitle}>{type.title}</div>
-              <div className={styles.cardDescription}>{type.description}</div>
-            </div>
-          ))}
-        </div>
+        <QuestionTypeSelector
+          selectedTypes={formData.options.questionTypes}
+          onChange={(selectedTypes) => updateOptions({ questionTypes: selectedTypes })}
+          label="Modify Question Types (Optional)"
+          showCategories={true}
+          maxSelections={6}
+        />
       </div>
     );
   }
@@ -166,37 +159,13 @@ const TypeSelectionStep: React.FC<TypeSelectionStepProps> = ({
         </p>
       </div>
 
-      <div className={styles.selectionGrid}>
-        {QUESTION_TYPES.map((type) => (
-          <div 
-            key={type.id}
-            className={`${styles.selectionCard} ${
-              formData.options.questionTypes.includes(type.id) ? styles.selected : ''
-            }`}
-            onClick={() => handleTypeToggle(type.id)}
-          >
-            <div className={styles.cardIcon}>{type.icon}</div>
-            <div className={styles.cardTitle}>{type.title}</div>
-            <div className={styles.cardDescription}>{type.description}</div>
-          </div>
-        ))}
-      </div>
-
-      {formData.options.questionTypes.length > 0 && (
-        <div className={styles.formSection}>
-          <h3 className={styles.sectionTitle}>Selected Types Preview:</h3>
-          <div className={styles.sectionDescription}>
-            {formData.options.questionTypes.map(typeId => {
-              const type = QUESTION_TYPES.find(t => t.id === typeId);
-              return type ? (
-                <div key={typeId} style={{ marginBottom: 'var(--space-2)' }}>
-                  <strong>{type.title}:</strong> {type.examples.join(', ')}
-                </div>
-              ) : null;
-            })}
-          </div>
-        </div>
-      )}
+      <QuestionTypeSelector
+        selectedTypes={formData.options.questionTypes}
+        onChange={(selectedTypes) => updateOptions({ questionTypes: selectedTypes })}
+        showCategories={true}
+        maxSelections={6}
+        required={true}
+      />
     </div>
   );
 };

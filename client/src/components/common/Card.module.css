@@ -5,6 +5,8 @@
   box-shadow: var(--shadow-sm);
   padding: var(--space-4);
   transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .cardClickable {
@@ -14,4 +16,18 @@
 .cardClickable:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--color-primary);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .card {
+    padding: var(--space-3);
+    border-radius: var(--border-radius-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-3);
+  }
 }
