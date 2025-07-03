@@ -132,7 +132,7 @@ const OptionsConfigStep: React.FC<OptionsConfigStepProps> = ({
       <div className={styles.formSection}>
         <DifficultySelector
           selectedDifficulty={formData.options.difficulty}
-          onChange={(difficulty) => updateOptions({ difficulty })}
+          onChange={(difficulty) => updateOptions({ difficulty: difficulty as 'easy' | 'medium' | 'hard' | 'expert' })}
           variant="cards"
           showDetails={true}
           required={true}

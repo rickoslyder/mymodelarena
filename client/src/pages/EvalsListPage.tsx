@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from 'use-debounce';
 import { Link } from 'react-router-dom';
@@ -41,11 +41,15 @@ function EvalsListPage() {
             dateRange: debouncedFilters.dateRange,
         }),
         placeholderData: (prevData) => prevData,
-        onError: (error: Error) => {
+    });
+
+    // Handle query errors with useEffect
+    useEffect(() => {
+        if (isError && error) {
             console.error('Failed to fetch evaluations:', error);
             alerts.showError('Failed to load evaluations. Please try again.');
-        },
-    });
+        }
+    }, [isError, error, alerts]);
 
     // Mock available tags - in real app this would come from API
     const availableTags = useMemo(() => [

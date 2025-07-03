@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import CreatableSelect, { MultiValue } from 'react-select/creatable';
+import CreatableSelect from 'react-select/creatable';
+import type { MultiValue } from 'react-select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
 import { Tag, Eval as EvalType } from '../../types';

@@ -39,9 +39,9 @@ const EvalRunProgress: React.FC<EvalRunProgressProps> = ({
     const { data: statusData, isLoading, error } = useQuery<EvalRunStatus>({
         queryKey: ['evalRunStatus', runId],
         queryFn: () => getEvalRunStatus(runId),
-        refetchInterval: (data) => {
+        refetchInterval: (query) => {
             // Stop polling if the run is completed or failed
-            if (data?.status === 'COMPLETED' || data?.status === 'FAILED') {
+            if (query.state.data?.status === 'COMPLETED' || query.state.data?.status === 'FAILED') {
                 return false;
             }
             return refreshInterval;

@@ -13,13 +13,13 @@ export const TEMPLATE_CATEGORIES = [
 ];
 
 // Template filtering helper functions
-export const getTemplatesByCategory = (templates: { category: string }[], category: string) => {
+export const getTemplatesByCategory = <T extends { category: string }>(templates: T[], category: string): T[] => {
   if (category === 'All') {
     return templates;
   }
   return templates.filter(template => template.category === category);
 };
 
-export const getTemplateById = (templates: { id: string }[], id: string) => {
+export const getTemplateById = <T extends { id: string }>(templates: T[], id: string): T | undefined => {
   return templates.find(template => template.id === id);
 };

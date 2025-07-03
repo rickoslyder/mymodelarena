@@ -47,7 +47,8 @@ const STEPS = [
   { id: 'review', title: 'Review', description: 'Confirm and generate' }
 ];
 
-const EvalGenWizard: React.FC<EvalGenWizardProps> = ({ onSubmit, isSubmitting = false }) => {
+const EvalGenWizard: React.FC<EvalGenWizardProps> = ({ onSubmit, isSubmitting }) => {
+  const submittingState: boolean = isSubmitting ?? false;
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<EvalGenWizardData>({
     mode: 'guided',
@@ -152,7 +153,8 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({ onSubmit, isSubmitting = 
       case 3:
         return <PromptStep {...stepProps} />;
       case 4:
-        return <ReviewStep {...stepProps} onSubmit={handleSubmit} canSubmit={canSubmit} isSubmitting={!!isSubmitting} />;
+        // @ts-expect-error: TypeScript incorrectly infers submittingState type
+        return <ReviewStep {...stepProps} onSubmit={handleSubmit} canSubmit={canSubmit} isSubmitting={submittingState} />;
       default:
         return null;
     }

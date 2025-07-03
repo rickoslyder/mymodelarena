@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppAlerts } from '../hooks/useAppAlerts';
 import {
@@ -35,7 +35,8 @@ const TemplatesPage: React.FC = () => {
     data: templates = [],
     isLoading,
     error,
-  } = useQuery({
+    isError,
+  } = useQuery<EvalTemplate[]>({
     queryKey: ['templates', { 
       search: searchTerm, 
       category: selectedCategory,
@@ -48,11 +49,15 @@ const TemplatesPage: React.FC = () => {
       isPublic: filterType === 'public' ? true : undefined,
       isBuiltIn: filterType === 'builtin' ? true : undefined,
     }),
-    onError: (error: Error) => {
+  });
+
+  // Handle query errors with useEffect
+  useEffect(() => {
+    if (isError && error) {
       console.error('Failed to fetch templates:', error);
       alerts.showError('Failed to load templates. Please refresh the page.');
-    },
-  });
+    }
+  }, [isError, error, alerts]);
 
   // Fetch categories for filter dropdown
   const { data: categories = [] } = useQuery({

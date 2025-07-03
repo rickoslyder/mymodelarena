@@ -85,17 +85,20 @@ describe("PromptEngineering", () => {
         name: "Test Template",
         description: "Test",
         category: "test",
+        icon: null,
         prompt: "Test prompt",
-        tags: [],
-        isBuiltIn: true,
         isPublic: true,
-        usageCount: 0,
-        averageRating: 0,
-        metadata: {},
-        examples: '["Example question 1", "Example question 2"]',
+        isBuiltIn: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: "system"
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "medium",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: "[]",
+        examples: '["Example question 1", "Example question 2"]',
+        createdByUserId: null,
+        usageCount: 0
       };
 
       const result = PromptEngineering.enhanceUserPrompt(userPrompt, undefined, template);
@@ -213,17 +216,20 @@ describe("PromptEngineering", () => {
         name: "Test Template",
         description: "Test",
         category: "test",
+        icon: null,
         prompt: "Test prompt",
-        tags: [],
-        isBuiltIn: true,
         isPublic: true,
-        usageCount: 0,
-        averageRating: 0,
-        metadata: {},
-        examples: 'invalid json',
+        isBuiltIn: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: "system"
+        defaultQuestionTypes: "[]",
+        defaultDifficulty: "medium",
+        defaultFormat: "open-ended",
+        defaultCount: 10,
+        tags: "[]",
+        examples: 'invalid json',
+        createdByUserId: null,
+        usageCount: 0
       };
 
       const result = PromptEngineering.enhanceUserPrompt("Test", undefined, template);

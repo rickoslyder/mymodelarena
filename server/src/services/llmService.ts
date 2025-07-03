@@ -6,7 +6,10 @@ import tokenizerService from "./tokenizerService";
 interface LlmApiOptions {
   temperature?: number;
   max_tokens?: number;
-  // Add other common OpenAI parameters as needed (top_p, frequency_penalty, etc.)
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  // Add other common OpenAI parameters as needed
 }
 
 // Define a structure for the completion result
