@@ -72,7 +72,7 @@ const EvalFilter: React.FC<EvalFilterProps> = ({
 }) => {
   const [tagInput, setTagInput] = useState('');
 
-  const updateFilter = (key: keyof EvalFilterOptions, value: any) => {
+  const updateFilter = (key: keyof EvalFilterOptions, value: string | string[] | { start?: string; end?: string } | undefined) => {
     onFiltersChange({
       ...filters,
       [key]: value,

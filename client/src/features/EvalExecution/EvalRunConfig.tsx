@@ -17,7 +17,6 @@ interface EvalRunConfigProps {
 }
 
 function EvalRunConfig({
-    evalId,
     availableModels,
     isLoadingModels,
     modelsError,

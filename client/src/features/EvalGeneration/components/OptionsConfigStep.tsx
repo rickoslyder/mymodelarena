@@ -16,32 +16,6 @@ interface OptionsConfigStepProps {
   onPrevious: () => void;
 }
 
-const DIFFICULTY_LEVELS = [
-  {
-    value: 'easy',
-    label: 'Easy',
-    description: 'Basic questions suitable for general knowledge testing',
-    icon: '🟢'
-  },
-  {
-    value: 'medium',
-    label: 'Medium',
-    description: 'Moderate difficulty requiring some reasoning or specialized knowledge',
-    icon: '🟡'
-  },
-  {
-    value: 'hard',
-    label: 'Hard',
-    description: 'Challenging questions requiring deep thinking or expertise',
-    icon: '🟠'
-  },
-  {
-    value: 'expert',
-    label: 'Expert',
-    description: 'Very difficult questions for testing advanced capabilities',
-    icon: '🔴'
-  }
-];
 
 const QUESTION_FORMATS = [
   {
@@ -81,18 +55,11 @@ const OptionsConfigStep: React.FC<OptionsConfigStepProps> = ({
     label: model.name 
   }));
 
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedIds = Array.from(e.target.selectedOptions, option => option.value);
-    updateFormData({ generatorModelIds: selectedIds });
-  };
 
   const handleSingleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     updateFormData({ generatorModelIds: e.target.value ? [e.target.value] : [] });
   };
 
-  const handleDifficultySelect = (difficulty: 'easy' | 'medium' | 'hard' | 'expert') => {
-    updateOptions({ difficulty });
-  };
 
   const handleFormatSelect = (format: 'open-ended' | 'multiple-choice' | 'true-false' | 'code-completion') => {
     updateOptions({ format });
@@ -186,7 +153,7 @@ const OptionsConfigStep: React.FC<OptionsConfigStepProps> = ({
               className={`${styles.selectionCard} ${
                 formData.options.format === format.value ? styles.selected : ''
               }`}
-              onClick={() => handleFormatSelect(format.value as any)}
+              onClick={() => handleFormatSelect(format.value as 'open-ended' | 'multiple-choice' | 'true-false' | 'code-completion')}
             >
               <div className={styles.cardIcon}>{format.icon}</div>
               <div className={styles.cardTitle}>{format.label}</div>

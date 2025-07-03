@@ -1,10 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { TestDataManager, TestHelpers, TEST_DATA } from "./test-setup";
+import { TestDataManager, TestHelpers } from "./test-setup";
 
 test.describe("Complete Integration Workflow", () => {
-  let testModelId: string | null = null;
-  let testEvalId: string | null = null;
-  let testTemplateId: string | null = null;
+  const testEvalId: string | null = null;
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -13,8 +11,8 @@ test.describe("Complete Integration Workflow", () => {
     await TestDataManager.waitForServer(page);
     
     // Create comprehensive test data
-    testModelId = await TestDataManager.createTestModel(page);
-    testTemplateId = await TestDataManager.createTestTemplate(page);
+    await TestDataManager.createTestModel(page);
+    await TestDataManager.createTestTemplate(page);
     
     await page.close();
   });

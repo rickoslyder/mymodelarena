@@ -25,7 +25,7 @@ interface DifficultySelectorProps {
   variant?: 'cards' | 'slider' | 'buttons';
 }
 
-export const DIFFICULTY_LEVELS: DifficultyLevel[] = [
+const DIFFICULTY_LEVELS: DifficultyLevel[] = [
   {
     id: 'beginner',
     name: 'Beginner',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAppAlerts } from '../App';
+import { useAppAlerts } from '../hooks/useAppAlerts';
 import {
   getTemplates,
   getTemplateCategories,
@@ -48,7 +48,7 @@ const TemplatesPage: React.FC = () => {
       isPublic: filterType === 'public' ? true : undefined,
       isBuiltIn: filterType === 'builtin' ? true : undefined,
     }),
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Failed to fetch templates:', error);
       alerts.showError('Failed to load templates. Please refresh the page.');
     },
@@ -69,7 +69,7 @@ const TemplatesPage: React.FC = () => {
       setDeletingTemplate(null);
       alerts.showSuccess('Template deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Failed to delete template:', error);
       alerts.showError('Failed to delete template. Please try again.');
     },
@@ -112,7 +112,6 @@ const TemplatesPage: React.FC = () => {
   };
 
   const filteredCount = templates.length;
-  const totalCount = templates.length; // This would ideally come from a separate query without filters
 
   return (
     <PageWrapper>

@@ -76,14 +76,6 @@ const TypeSelectionStep: React.FC<TypeSelectionStepProps> = ({
   formData,
   updateOptions,
 }) => {
-  const handleTypeToggle = (typeId: string) => {
-    const currentTypes = formData.options.questionTypes;
-    const newTypes = currentTypes.includes(typeId)
-      ? currentTypes.filter(t => t !== typeId)
-      : [...currentTypes, typeId];
-    
-    updateOptions({ questionTypes: newTypes });
-  };
 
   // Skip this step in advanced mode or when template is selected
   if (formData.mode === 'advanced') {

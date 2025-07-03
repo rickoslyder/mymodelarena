@@ -183,7 +183,7 @@ export class TestDataManager {
           console.log('Server is ready');
           return true;
         }
-      } catch (error) {
+      } catch {
         // Server not ready yet
       }
       

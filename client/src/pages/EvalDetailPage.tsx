@@ -178,7 +178,7 @@ function EvalDetailPage() {
     // Add Update Eval Mutation
     const updateEvalMutation = useMutation<Eval, Error, { evalId: string; data: { name?: string; description?: string; difficulty?: string } }>({
         mutationFn: (vars) => api.updateEval(vars.evalId, vars.data),
-        onSuccess: (data) => {
+        onSuccess: () => {
             toast.success('Evaluation updated successfully.');
             queryClient.invalidateQueries({ queryKey: ['eval', evalId] });
             setIsEditingName(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Button from './Button';
 import styles from './Alert.module.css';
 
@@ -34,6 +34,14 @@ const Alert: React.FC<AlertProps> = ({
   const [isVisible, setIsVisible] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
 
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      onClose?.();
+    }, 200); // Animation duration
+  }, [onClose]);
+
   useEffect(() => {
     if (autoClose && autoCloseDelay > 0) {
       const timer = setTimeout(() => {
@@ -42,15 +50,7 @@ const Alert: React.FC<AlertProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [autoClose, autoCloseDelay]);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      onClose?.();
-    }, 200); // Animation duration
-  };
+  }, [autoClose, autoCloseDelay, handleClose]);
 
   const getDefaultIcon = () => {
     switch (type) {
@@ -150,54 +150,6 @@ const Alert: React.FC<AlertProps> = ({
       )}
     </div>
   );
-};
-
-// Hook for managing multiple alerts
-export const useAlerts = () => {
-  const [alerts, setAlerts] = useState<Array<AlertProps & { id: string }>>([]);
-
-  const addAlert = (alert: Omit<AlertProps, 'onClose'>) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newAlert = {
-      ...alert,
-      id,
-      onClose: () => removeAlert(id),
-    };
-    setAlerts(prev => [...prev, newAlert]);
-    return id;
-  };
-
-  const removeAlert = (id: string) => {
-    setAlerts(prev => prev.filter(alert => alert.id !== id));
-  };
-
-  const clearAlerts = () => {
-    setAlerts([]);
-  };
-
-  // Convenience methods
-  const showSuccess = (message: string, options?: Partial<AlertProps>) => 
-    addAlert({ ...options, type: 'success', message });
-  
-  const showError = (message: string, options?: Partial<AlertProps>) => 
-    addAlert({ ...options, type: 'error', message });
-  
-  const showWarning = (message: string, options?: Partial<AlertProps>) => 
-    addAlert({ ...options, type: 'warning', message });
-  
-  const showInfo = (message: string, options?: Partial<AlertProps>) => 
-    addAlert({ ...options, type: 'info', message });
-
-  return {
-    alerts,
-    addAlert,
-    removeAlert,
-    clearAlerts,
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-  };
 };
 
 export default Alert;

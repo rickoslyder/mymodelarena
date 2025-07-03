@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { EvalGenWizardData, EvalGenOptions } from '../EvalGenWizard';
 import { Model } from '../../../types';
-import Textarea from '../../../components/common/Textarea';
 import Button from '../../../components/common/Button';
 import AdvancedPromptEditor from '../../../components/advanced/AdvancedPromptEditor';
 import { BUILT_IN_PROMPT_TEMPLATES } from '../../../components/advanced/promptTemplates';
@@ -19,7 +18,6 @@ interface PromptStepProps {
 const PromptStep: React.FC<PromptStepProps> = ({
   formData,
   updateFormData,
-  models,
 }) => {
   // Generate enhanced prompt for guided mode
   const enhancedPrompt = useMemo(() => {
@@ -71,9 +69,6 @@ const PromptStep: React.FC<PromptStepProps> = ({
     return prompt;
   }, [formData.mode, formData.options]);
 
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateFormData({ userPrompt: e.target.value });
-  };
 
   const useEnhancedPrompt = () => {
     updateFormData({ userPrompt: enhancedPrompt });

@@ -9,7 +9,7 @@ import LoadingState from '../components/common/LoadingState';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Button from '../components/common/Button';
 import EvalFilter, { EvalFilterOptions } from '../components/advanced/EvalFilter';
-import { useAppAlerts } from '../App';
+import { useAppAlerts } from '../hooks/useAppAlerts';
 import styles from './EvalsListPage.module.css';
 
 function EvalsListPage() {
@@ -41,7 +41,7 @@ function EvalsListPage() {
             dateRange: debouncedFilters.dateRange,
         }),
         placeholderData: (prevData) => prevData,
-        onError: (error: any) => {
+        onError: (error: Error) => {
             console.error('Failed to fetch evaluations:', error);
             alerts.showError('Failed to load evaluations. Please try again.');
         },

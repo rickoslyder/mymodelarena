@@ -23,7 +23,7 @@ interface QuestionTypeSelectorProps {
   required?: boolean;
 }
 
-export const QUESTION_TYPES: QuestionType[] = [
+const QUESTION_TYPES: QuestionType[] = [
   {
     id: 'multiple-choice',
     name: 'Multiple Choice',

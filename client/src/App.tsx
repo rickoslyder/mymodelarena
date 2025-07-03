@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import ModelsPage from './pages/ModelsPage'
@@ -15,19 +15,9 @@ import PageWrapper from './components/layout/PageWrapper'
 import Header from './components/layout/Header'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import AlertContainer from './components/common/AlertContainer'
-import { useAlerts } from './components/common/Alert'
+import { useAlerts } from './hooks/useAlerts'
+import { AlertContext } from './contexts/AlertContext'
 import { Toaster } from 'react-hot-toast'
-
-// Create Alert Context
-const AlertContext = createContext<ReturnType<typeof useAlerts> | null>(null)
-
-export const useAppAlerts = () => {
-  const context = useContext(AlertContext)
-  if (!context) {
-    throw new Error('useAppAlerts must be used within AlertProvider')
-  }
-  return context
-}
 
 function App() {
   const alertsManager = useAlerts()

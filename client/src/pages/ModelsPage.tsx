@@ -1,9 +1,7 @@
 import { useState } from 'react'; // Keep useState for modal later
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAppAlerts } from '../App';
 import * as api from '../lib/api';
 import ModelList from '../features/ModelManagement/ModelList';
-import LoadingState from '../components/common/LoadingState';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Button from '../components/common/Button'; // Import Button
 import Modal from '../components/common/Modal'; // Import Modal
@@ -19,7 +17,6 @@ function ModelsPage() {
     const [editingModel, setEditingModel] = useState<Model | null>(null);
     const [modelToDelete, setModelToDelete] = useState<Model | null>(null); // State for model to delete
     const queryClient = useQueryClient(); // Get query client instance
-    const alerts = useAppAlerts();
 
     const { data: models, isLoading, error, isError } = useQuery<Model[], Error>({
         queryKey: ['models'],
@@ -152,7 +149,7 @@ function ModelsPage() {
             {/* Show mutation error if present (excluding delete error shown via alert) */}
             {mutationError && <ErrorMessage message={mutationError} />}
 
-            {isQueryLoading && <Spinner />}
+            {isQueryLoading && <div>Loading models...</div>}
             {queryError && !mutationError && <ErrorMessage message={queryError} />}
 
             {models && (

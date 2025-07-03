@@ -26,7 +26,11 @@
       "Bash(ls:*)",
       "Bash(git rev-parse:*)",
       "Bash(mkdir:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git push:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }

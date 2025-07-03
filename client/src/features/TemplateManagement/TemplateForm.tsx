@@ -36,11 +36,6 @@ const CATEGORIES = [
   'Other',
 ];
 
-const DIFFICULTY_OPTIONS = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-];
 
 const FORMAT_OPTIONS = [
   { value: 'multiple-choice', label: 'Multiple Choice' },
@@ -51,16 +46,6 @@ const FORMAT_OPTIONS = [
   { value: 'true-false', label: 'True/False' },
 ];
 
-const QUESTION_TYPE_OPTIONS = [
-  'coding',
-  'multiple-choice',
-  'short-answer',
-  'essay',
-  'true-false',
-  'problem-solving',
-  'creative',
-  'analytical',
-];
 
 const TemplateForm: React.FC<TemplateFormProps> = ({
   template,
@@ -94,7 +79,7 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       onSuccess?.(newTemplate);
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Failed to create template:', error);
     },
   });
@@ -108,7 +93,7 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       onSuccess?.(updatedTemplate);
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Failed to update template:', error);
     },
   });
@@ -146,14 +131,6 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleQuestionTypeToggle = (type: string) => {
-    setFormData(prev => ({
-      ...prev,
-      defaultQuestionTypes: prev.defaultQuestionTypes.includes(type)
-        ? prev.defaultQuestionTypes.filter(t => t !== type)
-        : [...prev.defaultQuestionTypes, type],
-    }));
-  };
 
   const addTag = () => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Button from './Button'; // Adjust path as necessary
+import styles from './Button.module.css';
 
 describe('Button Component', () => {
 
@@ -11,13 +12,13 @@ describe('Button Component', () => {
 
     it('applies correct variant class', () => {
         const { rerender } = render(<Button variant="primary">Primary</Button>);
-        expect(screen.getByRole('button')).toHaveClass('primary');
+        expect(screen.getByRole('button')).toHaveClass(styles.primary);
 
         rerender(<Button variant="secondary">Secondary</Button>);
-        expect(screen.getByRole('button')).toHaveClass('secondary');
+        expect(screen.getByRole('button')).toHaveClass(styles.secondary);
 
         rerender(<Button variant="danger">Danger</Button>);
-        expect(screen.getByRole('button')).toHaveClass('danger');
+        expect(screen.getByRole('button')).toHaveClass(styles.danger);
     });
 
     it('calls onClick handler when clicked', () => {
