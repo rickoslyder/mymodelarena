@@ -486,4 +486,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Ready to evaluate your LLMs?** 🚀 [Get started now](#-quick-start) 
+**Ready to evaluate your LLMs?** 🚀 [Get started now](#-quick-start)
+
+*Built with ❤️ for the LLM evaluation community* 
