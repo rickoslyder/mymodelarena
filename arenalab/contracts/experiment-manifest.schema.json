@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arenalab.dev/schemas/experiment-manifest-1.0.0.json",
+  "title": "ArenaLab Mafia experiment manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "experimentId": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "gameId": { "const": "mafia.v1" },
+    "seed": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "autonomyTier": { "const": "symbolic" },
+    "timing": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["logical", "wall_clock"] },
+        "simultaneousResolution": { "const": "two_phase_commit" },
+        "decisionDeadlineMs": { "type": "integer", "minimum": 100, "maximum": 600000 }
+      },
+      "required": ["mode", "simultaneousResolution", "decisionDeadlineMs"]
+    },
+    "failurePolicy": {
+      "type": "object",
+      "properties": {
+        "transportAttempts": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "semanticRetries": { "const": 0 },
+        "malformedAction": { "const": "deterministic_fallback" },
+        "substitution": { "const": "forbidden" }
+      },
+      "required": ["transportAttempts", "semanticRetries", "malformedAction", "substitution"]
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "provider": { "enum": ["scripted", "openai", "anthropic", "gemini", "openai-compatible"] },
+          "model": { "type": "string", "minLength": 1 },
+          "versionSemantics": { "enum": ["local_digest", "provider_snapshot", "immutable_digest"] }
+        },
+        "required": ["id", "name", "provider", "model", "versionSemantics"]
+      }
+    }
+  },
+  "required": ["schemaVersion", "experimentId", "title", "gameId", "seed", "autonomyTier", "timing", "failurePolicy", "agents"]
+}

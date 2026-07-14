@@ -1,0 +1,18 @@
+{
+  "name": "arenalab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic, replayable multi-model game experiments with a hardened Mafia reference environment.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "build": "node scripts/build.mjs",
+    "demo": "node scripts/run.mjs",
+    "verify": "node scripts/verify.mjs",
+    "soak": "node scripts/soak.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/core.mjs && node --check src/mafia.mjs && node --check src/providers.mjs && node --check src/orchestrator.mjs && node --check src/server.mjs && npm test && npm run build"
+  },
+  "license": "MIT"
+}

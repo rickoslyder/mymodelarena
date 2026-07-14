@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arenalab.dev/schemas/decision-1.0.0.json",
+  "title": "ArenaLab normalized game decision",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "speech": { "type": "string", "maxLength": 800 },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["kill", "protect", "inspect", "speak", "vote"] },
+        "targetId": { "type": ["string", "null"] }
+      },
+      "required": ["type", "targetId"]
+    },
+    "beliefs": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "subjectId": { "type": "string" },
+          "probabilityMafia": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["subjectId", "probabilityMafia"]
+      }
+    }
+  },
+  "required": ["speech", "action", "beliefs"]
+}

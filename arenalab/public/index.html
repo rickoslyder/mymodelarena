@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="ArenaLab — deterministic, replayable multi-model game experiments." />
+  <meta name="theme-color" content="#070b13" />
+  <title>ArenaLab · AI game experiment console</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to experiment</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="ArenaLab">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div><p class="eyebrow">Multi-agent experiment system</p><h1>ArenaLab</h1></div>
+      </div>
+      <div class="topbar-actions">
+        <span id="run-status" class="status-pill" data-status="loading">Loading</span>
+        <button id="download-run" class="button secondary" type="button" disabled>Export artifact</button>
+      </div>
+    </header>
+
+    <main id="main" class="workspace" tabindex="-1">
+      <section class="hero panel" aria-labelledby="experiment-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Symbolic authority · hidden information · frozen barriers</p>
+          <h2 id="experiment-title">Can six agents survive their own arguments?</h2>
+          <p>A complete Mafia control match generated from one seed, replayed from an immutable event chain, and rendered from a strictly public projection.</p>
+        </div>
+        <form id="seed-form" class="seed-card">
+          <label for="seed-input">Experiment seed</label>
+          <div class="seed-row">
+            <input id="seed-input" name="seed" value="arena-demo-001" minlength="1" maxlength="120" autocomplete="off" spellcheck="false" />
+            <button class="button primary" type="submit">Run match</button>
+          </div>
+          <small>Identical seed and manifest produce the same canonical event chain.</small>
+        </form>
+      </section>
+
+      <section class="metric-grid" aria-label="Run summary">
+        <article class="metric-card"><span>Winner</span><strong id="metric-winner">—</strong><small id="metric-winner-detail">Awaiting result</small></article>
+        <article class="metric-card"><span>Integrity</span><strong id="metric-integrity">—</strong><small id="metric-integrity-detail">Hash chain</small></article>
+        <article class="metric-card"><span>Rounds</span><strong id="metric-rounds">—</strong><small id="metric-rounds-detail">Logical time only</small></article>
+        <article class="metric-card"><span>Fallbacks</span><strong id="metric-fallbacks">—</strong><small id="metric-fallbacks-detail">No semantic resampling</small></article>
+      </section>
+
+      <section class="primary-grid">
+        <article class="panel arena-panel" aria-labelledby="arena-title">
+          <header class="panel-heading">
+            <div><p class="eyebrow">Public broadcast projection</p><h3 id="arena-title">The table</h3></div>
+            <div class="phase-readout"><span id="phase-round">Round —</span><strong id="phase-name">Preparing</strong></div>
+          </header>
+          <div class="arena-stage" aria-live="polite">
+            <div class="arena-core">
+              <span class="orbit" aria-hidden="true"></span>
+              <p id="arena-headline">Preparing the arena.</p>
+              <small id="arena-subtitle">Every frame is backed by a canonical event hash.</small>
+            </div>
+            <ol id="player-ring" class="player-ring" aria-label="Players"></ol>
+          </div>
+          <div class="replay-controls" aria-label="Replay controls">
+            <button id="replay-start" class="icon-button" type="button" aria-label="Jump to start">|◀</button>
+            <button id="replay-back" class="icon-button" type="button" aria-label="Previous frame">◀</button>
+            <button id="replay-play" class="button primary" type="button" aria-label="Play replay">Play</button>
+            <button id="replay-forward" class="icon-button" type="button" aria-label="Next frame">▶</button>
+            <button id="replay-end" class="icon-button" type="button" aria-label="Jump to end">▶|</button>
+            <label for="timeline">Frame <span id="timeline-value">0 / 0</span></label>
+            <input id="timeline" type="range" min="0" max="0" value="0" />
+          </div>
+        </article>
+
+        <aside class="panel transcript-panel" aria-labelledby="transcript-title">
+          <header class="panel-heading compact">
+            <div><p class="eyebrow">Observable speech</p><h3 id="transcript-title">Public transcript</h3></div>
+            <select id="transcript-filter" aria-label="Filter transcript by phase">
+              <option value="all">All phases</option>
+              <option value="day_discussion">Discussion</option>
+              <option value="day_vote">Voting</option>
+              <option value="night">Night</option>
+            </select>
+          </header>
+          <div id="transcript" class="transcript" aria-live="polite"></div>
+        </aside>
+      </section>
+
+      <section class="secondary-grid">
+        <article class="panel ledger-panel" aria-labelledby="ledger-title">
+          <header class="panel-heading compact">
+            <div><p class="eyebrow">Read-only provenance</p><h3 id="ledger-title">Public event ledger</h3></div>
+            <span id="ledger-count" class="muted">0 events</span>
+          </header>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Seq</th><th>Event</th><th>Phase</th><th>Canonical hash</th></tr></thead>
+              <tbody id="event-ledger"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel integrity-panel" aria-labelledby="integrity-title">
+          <header class="panel-heading compact">
+            <div><p class="eyebrow">Tamper evidence</p><h3 id="integrity-title">Integrity receipt</h3></div>
+            <span id="integrity-badge" class="status-pill" data-status="loading">Unverified</span>
+          </header>
+          <dl class="receipt-list">
+            <div><dt>Run ID</dt><dd id="receipt-run-id">—</dd></div>
+            <div><dt>Manifest</dt><dd id="receipt-manifest">—</dd></div>
+            <div><dt>Chain head</dt><dd id="receipt-chain">—</dd></div>
+            <div><dt>Public digest</dt><dd id="receipt-public">—</dd></div>
+          </dl>
+          <div class="integrity-actions">
+            <button id="verify-public" class="button primary" type="button" disabled>Verify public artifact</button>
+            <button id="copy-chain" class="button secondary" type="button" disabled>Copy chain head</button>
+          </div>
+          <p id="integrity-message" class="help" role="status">The server verifies the complete private chain before publishing this projection.</p>
+        </article>
+      </section>
+
+      <section class="panel method-panel" aria-labelledby="method-title">
+        <header class="panel-heading"><div><p class="eyebrow">Experimental contract</p><h3 id="method-title">What this run guarantees</h3></div></header>
+        <div class="method-grid">
+          <article><span>01</span><h4>Frozen observations</h4><p>Every actor in a simultaneous barrier sees the same authoritative state snapshot.</p></article>
+          <article><span>02</span><h4>Typed visibility</h4><p>Private roles and investigations are constructed per agent, never removed from a global prompt.</p></article>
+          <article><span>03</span><h4>No silent resampling</h4><p>Transport retries preserve the request. Invalid decisions become explicit deterministic fallbacks.</p></article>
+          <article><span>04</span><h4>Replayable truth</h4><p>Each transition includes pre-state, post-state, and previous-event hashes in one canonical chain.</p></article>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>ArenaLab v1.0</span><span>Public projection only · secrets and private observations excluded</span></footer>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
