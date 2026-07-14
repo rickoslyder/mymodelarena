@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0.0",
+  "experimentId": "live-mafia-example",
+  "title": "Live multi-provider Mafia example",
+  "gameId": "mafia.v1",
+  "seed": "replace-with-preregistered-seed",
+  "autonomyTier": "symbolic",
+  "timing": {
+    "mode": "logical",
+    "simultaneousResolution": "two_phase_commit",
+    "decisionDeadlineMs": 30000
+  },
+  "memory": {
+    "workingMemory": "full_public_transcript",
+    "crossRunMemory": false
+  },
+  "failurePolicy": {
+    "transportAttempts": 2,
+    "semanticRetries": 0,
+    "malformedAction": "deterministic_fallback",
+    "substitution": "forbidden"
+  },
+  "rules": {
+    "maxRounds": 12,
+    "doctorMaySelfProtect": true,
+    "revealRolesAtEnd": true
+  },
+  "agents": [
+    { "id": "openai_a", "name": "OpenAI A", "provider": "openai", "model": "REPLACE_WITH_EXACT_OPENAI_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 },
+    { "id": "openai_b", "name": "OpenAI B", "provider": "openai", "model": "REPLACE_WITH_EXACT_OPENAI_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 },
+    { "id": "anthropic_a", "name": "Anthropic A", "provider": "anthropic", "model": "REPLACE_WITH_EXACT_ANTHROPIC_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 },
+    { "id": "anthropic_b", "name": "Anthropic B", "provider": "anthropic", "model": "REPLACE_WITH_EXACT_ANTHROPIC_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 },
+    { "id": "gemini_a", "name": "Gemini A", "provider": "gemini", "model": "REPLACE_WITH_EXACT_GEMINI_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 },
+    { "id": "gemini_b", "name": "Gemini B", "provider": "gemini", "model": "REPLACE_WITH_EXACT_GEMINI_SNAPSHOT", "versionSemantics": "provider_snapshot", "maxOutputTokens": 700 }
+  ]
+}
